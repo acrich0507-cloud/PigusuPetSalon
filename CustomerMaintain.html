@@ -62,18 +62,61 @@
         };
 
         // 準備送出表單的函式 (GAS 新增邏輯稍後再補上)
-        function submitForm() {
+        async function submitForm() {
             const uid = document.getElementById('U_ID').value;
             const name = document.getElementById('U_Name').value;
             const phone = document.getElementById('U_Phone').value;
+            const birthday = document.getElementById('U_BirthDay').value;
 
             if (!uid || !name || !phone) {
                 alert("請確認姓名與電話皆已填寫！");
                 return;
             }
 
-            alert("前端表單驗證成功！(這裡之後會串接 GAS 把資料寫入 Supabase)");
-            // TODO: 呼叫 GAS API 執行 Insert
+            // 防呆：將按鈕鎖定避免重複點擊
+            const btn = document.querySelector('.btn');
+            btn.innerText = '資料儲存中...';
+            btn.disabled = true;
+
+            // ⚠️ 記得填入你自己的 GAS 網址
+            const GAS_API_URL = "你的_GAS_網頁應用程式_URL_請填入這裡"; 
+
+            const requestData = {
+                action: 'insertUser',
+                payload: {
+                    uid: uid,
+                    name: name,
+                    phone: phone,
+                    birthday: birthday
+                }
+            };
+
+            try {
+                // 發送 POST 請求至 GAS
+                // 使用 text/plain 避免瀏覽器 CORS 預檢請求 (Preflight) 的問題
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('資料建檔成功！馬上為您跳轉回會員中心。');
+                    // 註冊成功，導回首頁，這次就能顯示 QR Code 了
+                    window.location.replace('CustomerCenter.html'); 
+                } else {
+                    alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
+                    btn.innerText = '確認送出';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error(error);
+                alert('網路連線錯誤，請稍後再試。');
+                btn.innerText = '確認送出';
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
