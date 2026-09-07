@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毛孩美容會員中心</title>
+    <!-- 引入 LINE LIFF SDK -->
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <!-- 引入 QRCode.js 生成條碼 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 20px; background: #f4f4f4; color: #333; }
+        #content { display: none; background: #fff; padding: 30px 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #qrcode { display: flex; justify-content: center; margin: 20px 0; }
+        .btn { display: block; width: 100%; padding: 15px; margin: 12px 0; background: #00B900; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .btn-secondary { background: #555; }
+        .loading-text { font-size: 18px; color: #666; margin-top: 50px; }
+        .uid-text { font-size: 12px; color: gray; word-break: break-all; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-text">正在讀取您的 LINE 資訊...</div>
+    
+    <!-- 主內容區塊 -->
+    <div id="content">
+        <h2>您的專屬會員碼</h2>
+        
+        <div id="qrcode"></div>
+        <p id="uid-display" class="uid-text"></p>
+        
+        <hr style="margin: 20px 0; border-top: 1px solid #eee;">
+        
+        <!-- 功能按鈕 -->
+        <button class="btn" onclick="location.href='CustomerMaintain.html'">會員資料維護</button>
+        <button class="btn" onclick="location.href='PetMaintain.html'">毛小孩資料維護</button>
+        <button class="btn btn-secondary" onclick="location.href='BookingSelect.html'">預約記錄查詢</button>
+    </div>
+
+    <script>
+        const LIFF_ID = "2011433016-ReLRLT5q"; 
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
+        const REGISTER_PAGE_URL = "CustomerMaintain.html"; // 對齊你的命名
+
+        async function initApp() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    const profile = await liff.getProfile();
+                    checkUserExists(profile.userId);
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading').innerText = "LINE 系統載入失敗，請確認 LIFF ID 是否正確。";
+            }
+        }
+
+        async function checkUserExists(uid) {
+            document.getElementById('loading').innerText = "正在驗證會員資料...";
+            
+            try {
+                const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
+                const result = await response.json();
+
+                if (result.exists) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+                    document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
+                    
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: uid,
+                        width: 160,
+                        height: 160,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                } else {
+                    // 自動跳轉至會員資料維護頁面，帶上 UID
+                    window.location.replace(`${REGISTER_PAGE_URL}?uid=${uid}`);
+                }
+            } catch (err) {
+                console.error("API 呼叫失敗", err);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                document.getElementById('uid-display').innerText = `(測試模式) 您的 UID: ${uid}`;
+                new QRCode(document.getElementById("qrcode"), { text: uid, width: 160, height: 160 });
+                alert("無法連線到 GAS 後端，目前以測試模式顯示畫面。");
+            }
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
