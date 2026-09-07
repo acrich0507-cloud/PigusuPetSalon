@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會員資料維護</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; background: #f4f4f4; }
+        .form-container { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 15px; background: #00B900; color: white; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .uid-display { font-size: 12px; color: #888; margin-bottom: 15px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>填寫會員資料</h2>
+        <p class="uid-display" id="display-uid">讀取 UID 中...</p>
+
+        <form id="memberForm">
+            <!-- 隱藏欄位用來儲存 UID -->
+            <input type="hidden" id="U_ID" name="U_ID">
+
+            <div class="form-group">
+                <label for="U_Name">姓名</label>
+                <input type="text" id="U_Name" name="U_Name" placeholder="請輸入姓名" required>
+            </div>
+
+            <div class="form-group">
+                <label for="U_Phone">手機號碼</label>
+                <input type="tel" id="U_Phone" name="U_Phone" placeholder="09xxxxxxxx" required>
+            </div>
+
+            <div class="form-group">
+                <label for="U_BirthDay">生日</label>
+                <input type="date" id="U_BirthDay" name="U_BirthDay">
+            </div>
+
+            <button type="button" class="btn" onclick="submitForm()">確認送出</button>
+        </form>
+    </div>
+
+    <script>
+        // 從網址中抓取 UID (剛剛首頁跳轉過來時帶上的參數)
+        function getUidFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('uid');
+        }
+
+        // 頁面載入時執行
+        window.onload = function() {
+            const uid = getUidFromUrl();
+            if (uid) {
+                document.getElementById('U_ID').value = uid;
+                document.getElementById('display-uid').innerText = `您的專屬 ID: ${uid}`;
+            } else {
+                document.getElementById('display-uid').innerText = "無法取得 UID，請從 LINE 重新進入";
+            }
+        };
+
+        // 準備送出表單的函式 (GAS 新增邏輯稍後再補上)
+        function submitForm() {
+            const uid = document.getElementById('U_ID').value;
+            const name = document.getElementById('U_Name').value;
+            const phone = document.getElementById('U_Phone').value;
+
+            if (!uid || !name || !phone) {
+                alert("請確認姓名與電話皆已填寫！");
+                return;
+            }
+
+            alert("前端表單驗證成功！(這裡之後會串接 GAS 把資料寫入 Supabase)");
+            // TODO: 呼叫 GAS API 執行 Insert
+        }
+    </script>
+</body>
+</html>
