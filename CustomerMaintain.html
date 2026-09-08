@@ -53,13 +53,19 @@
         // 頁面載入時執行
         window.onload = function() {
             const uid = getUidFromUrl();
+            const lineName = getUidFromUrl('name'); // 🌟 抓取網址上的名稱
             if (uid) {
                 document.getElementById('U_ID').value = uid;
                 document.getElementById('display-uid').innerText = `您的專屬 ID: ${uid}`;
             } else {
                 document.getElementById('display-uid').innerText = "無法取得 UID，請從 LINE 重新進入";
             }
+            // 🌟 如果有抓到 LINE 暱稱，就自動填入姓名的 input 欄位中
+            if (lineName) {
+                document.getElementById('U_Name').value = lineName;
+            }
         };
+
 
         // 準備送出表單的函式 (GAS 新增邏輯稍後再補上)
         async function submitForm() {
