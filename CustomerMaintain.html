@@ -1,214 +1,78 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>會員資料維護</title>
-    <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
-        .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #444; }
-        .form-group input[type="text"], .form-group input[type="tel"], .form-group input[type="email"], .form-group input[type="date"], .form-group select, .form-group textarea { 
-            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; 
-        }
-        .form-group textarea { resize: vertical; height: 80px; }
-        .checkbox-group { display: flex; align-items: center; gap: 8px; font-weight: normal; }
-        .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
-        .btn { width: 100%; padding: 16px; background: #00B900; color: white; border: none; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn:disabled { background: #999; cursor: not-allowed; }
-        .header-text { font-size: 14px; color: #666; margin-bottom: 20px; word-break: break-all; }
-        #loading-overlay { display: none; text-align: center; color: #00B900; font-weight: bold; margin-bottom: 15px; }
-    </style>
-</head>
-<body>
+// CustomerMaintain.gs
 
-    <div class="form-container">
-        <h2>會員資料維護</h2>
-        <div id="loading-overlay">資料讀取中，請稍候...</div>
-        <div class="header-text" id="display-uid"></div>
+// ==========================================
+// 1. 負責「新增/修改」會員資料 (Upsert)
+// ==========================================
+function handleInsertUser(payload) {
+  const url = `${APP_CONFIG.supabase.url}/rest/v1/Customer`; 
+  
+  const body = {
+    U_ID: payload.uid,
+    U_LineName: payload.lineName || null,
+    U_Name: payload.name,
+    U_Six: payload.six || null,
+    U_Phone: payload.phone,
+    U_Addr: payload.addr || null,
+    U_Email: payload.email || null,
+    U_BirthDay: payload.birthday || null,
+    U_Memo: payload.memo || null,
+    U_Marketing: payload.marketing, 
+    U_Flag: true, 
+    Update_Time: new Date().toISOString() 
+  };
 
-        <form id="memberForm" style="display: none;">
-            <input type="hidden" id="U_ID">
+  const headers = getSupabaseHeaders();
+  headers['Prefer'] = 'resolution=merge-duplicates';
 
-            <div class="form-group">
-                <label for="U_LineName">LINE 暱稱</label>
-                <input type="text" id="U_LineName" readonly style="background: #e9ecef; color: #666;">
-            </div>
+  const options = {
+    method: 'post',
+    headers: headers,
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true
+  };
 
-            <div class="form-group">
-                <label for="U_Name">真實姓名 <span style="color:red;">*</span></label>
-                <input type="text" id="U_Name" placeholder="請輸入姓名" required>
-            </div>
+  const response = UrlFetchApp.fetch(url, options);
+  const responseCode = response.getResponseCode();
+  const responseText = response.getContentText();
+  
+  if (responseCode === 201 || responseCode === 200 || responseCode === 204) {
+     return createJsonResponse({ success: true });
+  } else {
+     return createJsonResponse({ success: false, error: responseText });
+  }
+}
 
-            <div class="form-group">
-                <label for="U_Six">性別</label>
-                <select id="U_Six">
-                    <option value="">請選擇</option>
-                    <option value="男">男</option>
-                    <option value="女">女</option>
-                    <option value="其他">其他</option>
-                </select>
-            </div>
+// ==========================================
+// 2. 🌟 負責「查詢」單一會員完整資料 (你剛剛漏掉的這段)
+// ==========================================
+function handleGetUserData(uid) {
+  if (!uid) {
+    return createJsonResponse({ success: false, error: '缺少 UID' });
+  }
 
-            <div class="form-group">
-                <label for="U_Phone">手機號碼 <span style="color:red;">*</span></label>
-                <input type="tel" id="U_Phone" placeholder="09xxxxxxxx" required>
-            </div>
+  const url = `${APP_CONFIG.supabase.url}/rest/v1/Customer?U_ID=eq.${uid}&select=*`;
+  
+  const options = {
+    method: 'get',
+    headers: getSupabaseHeaders(), 
+    muteHttpExceptions: true
+  };
 
-            <div class="form-group">
-                <label for="U_Email">Email 電子信箱</label>
-                <input type="email" id="U_Email" placeholder="example@email.com">
-            </div>
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    const data = JSON.parse(response.getContentText());
+    
+    if (data.error || data.code) {
+      return createJsonResponse({ success: false, error: data.message });
+    }
 
-            <div class="form-group">
-                <label for="U_Addr">聯絡地址</label>
-                <input type="text" id="U_Addr" placeholder="請輸入完整地址">
-            </div>
-
-            <div class="form-group">
-                <label for="U_BirthDay">生日</label>
-                <input type="date" id="U_BirthDay">
-            </div>
-
-            <div class="form-group">
-                <label for="U_Memo">個人備註 (如：偏好服務)</label>
-                <textarea id="U_Memo" placeholder="有什麼想告訴我們的嗎？"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label class="checkbox-group">
-                    <input type="checkbox" id="U_Marketing" checked>
-                    我願意接收毛孩美容的最新促銷與活動訊息
-                </label>
-            </div>
-
-            <button type="button" class="btn" id="submitBtn" onclick="submitForm()">儲存資料</button>
-        </form>
-    </div>
-
-    <script>
-        // 已經幫你替換成你專屬的 GAS URL
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
-
-        function getParamFromUrl(paramName) {
-            const params = new URLSearchParams(window.location.search);
-            return params.get(paramName);
-        }
-
-        window.onload = async function() {
-            const uid = getParamFromUrl('uid');
-            const lineName = getParamFromUrl('name');
-            
-            if (!uid) {
-                document.getElementById('display-uid').innerText = "無法取得系統授權碼，請從 LINE 重新進入";
-                return;
-            }
-
-            document.getElementById('U_ID').value = uid;
-            document.getElementById('display-uid').innerText = `專屬 ID: ${uid}`;
-            
-            // 顯示讀取中動畫，並隱藏表單
-            document.getElementById('loading-overlay').style.display = 'block';
-            document.getElementById('memberForm').style.display = 'none';
-
-            try {
-                // 向 GAS 請求該 UID 的完整資料
-                const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
-                const result = await response.json();
-
-                // 🌟 新增這行：讓系統強制跳出 GAS 的回傳結果
-                alert("後端回傳結果：" + JSON.stringify(result));
-                
-                if (result.success && result.data) {
-                    // 🟢 狀況 A：舊會員，將資料庫的資料填入表單
-                    const dbData = result.data;
-                    document.getElementById('U_LineName').value = lineName || dbData.U_LineName || '';
-                    document.getElementById('U_Name').value = dbData.U_Name || '';
-                    document.getElementById('U_Six').value = dbData.U_Six || '';
-                    document.getElementById('U_Phone').value = dbData.U_Phone || '';
-                    document.getElementById('U_Email').value = dbData.U_Email || '';
-                    document.getElementById('U_Addr').value = dbData.U_Addr || '';
-                    document.getElementById('U_BirthDay').value = dbData.U_BirthDay || '';
-                    document.getElementById('U_Memo').value = dbData.U_Memo || '';
-                    document.getElementById('U_Marketing').checked = dbData.U_Marketing !== false; 
-                } else {
-                    // 🟡 狀況 B：新會員註冊，只填入 LINE 帶過來的基礎資訊
-                    document.getElementById('U_LineName').value = lineName || '';
-                    document.getElementById('U_Name').value = lineName || '';
-                }
-            } catch (error) {
-                console.error("資料讀取失敗:", error);
-                document.getElementById('U_LineName').value = lineName || '';
-                document.getElementById('U_Name').value = lineName || '';
-            } finally {
-                // 隱藏讀取中，顯示表單
-                document.getElementById('loading-overlay').style.display = 'none';
-                document.getElementById('memberForm').style.display = 'block';
-            }
-        };
-
-        async function submitForm() {
-            const uid = document.getElementById('U_ID').value;
-            const lineName = document.getElementById('U_LineName').value;
-            const name = document.getElementById('U_Name').value;
-            const six = document.getElementById('U_Six').value;
-            const phone = document.getElementById('U_Phone').value;
-            const email = document.getElementById('U_Email').value;
-            const addr = document.getElementById('U_Addr').value;
-            const birthday = document.getElementById('U_BirthDay').value;
-            const memo = document.getElementById('U_Memo').value;
-            const marketing = document.getElementById('U_Marketing').checked; 
-
-            if (!uid || !name || !phone) {
-                alert("請確認「真實姓名」與「手機號碼」皆已填寫！");
-                return;
-            }
-
-            const btn = document.getElementById('submitBtn');
-            btn.innerText = '資料儲存中...';
-            btn.disabled = true;
-
-            const requestData = {
-                action: 'insertUser', 
-                payload: {
-                    uid: uid,
-                    lineName: lineName,
-                    name: name,
-                    six: six,
-                    phone: phone,
-                    email: email,
-                    addr: addr,
-                    birthday: birthday,
-                    memo: memo,
-                    marketing: marketing
-                }
-            };
-
-            try {
-                const response = await fetch(GAS_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(requestData)
-                });
-                
-                //const result = await response.json();
-                
-                if (result.success) {
-                    alert('資料儲存成功！將為您跳轉回會員中心。');
-                    window.location.replace('CustomerCenter.html'); 
-                } else {
-                    alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
-                    btn.innerText = '儲存資料';
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                console.error(error);
-                alert('網路連線錯誤，請稍後再試。');
-                btn.innerText = '儲存資料';
-                btn.disabled = false;
-            }
-        }
-    </script>
-</body>
-</html>
+    if (Array.isArray(data) && data.length > 0) {
+      return createJsonResponse({ success: true, data: data[0] });
+    } else {
+      return createJsonResponse({ success: true, data: null });
+    }
+    
+  } catch (error) {
+    return createJsonResponse({ success: false, error: error.toString() });
+  }
+}
