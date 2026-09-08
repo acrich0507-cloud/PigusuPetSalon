@@ -113,8 +113,6 @@
     </div>
 
     <script>
-        // ⚠️ 記得填入你自己的 GAS 網址
-        //const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
 
         // 🌟 台灣縣市與行政區資料
         const taiwanDistricts = {
@@ -257,7 +255,7 @@
 
         window.onload = async function() {
             initCityDropdown(); // 初始化縣市下拉選單
-            initDateDropdowns(); // 🌟 1. 呼叫生日初始化函式
+            initDateDropdowns(); //1. 呼叫生日初始化函式
 
             const uid = getParamFromUrl('uid');
             const lineName = getParamFromUrl('name');
@@ -274,7 +272,6 @@
             document.getElementById('memberForm').style.display = 'none';
 
             try {
-                // const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const response = await fetch(`${CONFIG.GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const result = await response.json();
 
