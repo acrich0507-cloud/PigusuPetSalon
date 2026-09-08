@@ -227,7 +227,8 @@
             document.getElementById('memberForm').style.display = 'none';
 
             try {
-                const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
+                //const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const result = await response.json();
 
                 if (result.success && result.data) {
@@ -304,7 +305,8 @@
             };
 
             try {
-                const response = await fetch(GAS_API_URL, {
+                //const response = await fetch(GAS_API_URL, {
+                const response = await fetch(CONFIG.GAS_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(requestData)
