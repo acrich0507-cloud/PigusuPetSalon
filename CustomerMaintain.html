@@ -1,78 +1,331 @@
-// CustomerMaintain.gs
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會員資料維護</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
+        .form-container { background: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #444; }
+        .form-group input[type="text"], .form-group input[type="tel"], .form-group input[type="email"], .form-group input[type="date"], .form-group select, .form-group textarea { 
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; 
+        }
+        .form-group textarea { resize: vertical; height: 80px; }
+        .address-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; font-weight: normal; }
+        .checkbox-group input { width: 20px; height: 20px; cursor: pointer; }
+        .btn { width: 100%; padding: 16px; background: #00B900; color: white; border: none; border-radius: 6px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn:disabled { background: #999; cursor: not-allowed; }
+        .header-text { font-size: 14px; color: #666; margin-bottom: 20px; word-break: break-all; }
+        #loading-overlay { display: none; text-align: center; color: #00B900; font-weight: bold; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
 
-// ==========================================
-// 1. 負責「新增/修改」會員資料 (Upsert)
-// ==========================================
-function handleInsertUser(payload) {
-  const url = `${APP_CONFIG.supabase.url}/rest/v1/Customer`; 
-  
-  const body = {
-    U_ID: payload.uid,
-    U_LineName: payload.lineName || null,
-    U_Name: payload.name,
-    U_Six: payload.six || null,
-    U_Phone: payload.phone,
-    U_Addr: payload.addr || null,
-    U_Email: payload.email || null,
-    U_BirthDay: payload.birthday || null,
-    U_Memo: payload.memo || null,
-    U_Marketing: payload.marketing, 
-    U_Flag: true, 
-    Update_Time: new Date().toISOString() 
-  };
+    <div class="form-container">
+        <h2>會員資料維護</h2>
+        <div id="loading-overlay">資料讀取中，請稍候...</div>
+        <div class="header-text" id="display-uid"></div>
 
-  const headers = getSupabaseHeaders();
-  headers['Prefer'] = 'resolution=merge-duplicates';
+        <form id="memberForm" style="display: none;">
+            <input type="hidden" id="U_ID">
 
-  const options = {
-    method: 'post',
-    headers: headers,
-    payload: JSON.stringify(body),
-    muteHttpExceptions: true
-  };
+            <div class="form-group">
+                <label for="U_LineName">LINE 暱稱</label>
+                <input type="text" id="U_LineName" readonly style="background: #e9ecef; color: #666;">
+            </div>
 
-  const response = UrlFetchApp.fetch(url, options);
-  const responseCode = response.getResponseCode();
-  const responseText = response.getContentText();
-  
-  if (responseCode === 201 || responseCode === 200 || responseCode === 204) {
-     return createJsonResponse({ success: true });
-  } else {
-     return createJsonResponse({ success: false, error: responseText });
-  }
-}
+            <div class="form-group">
+                <label for="U_Name">真實姓名 <span style="color:red;">*</span></label>
+                <input type="text" id="U_Name" placeholder="請輸入姓名" required>
+            </div>
 
-// ==========================================
-// 2. 🌟 負責「查詢」單一會員完整資料 (你剛剛漏掉的這段)
-// ==========================================
-function handleGetUserData(uid) {
-  if (!uid) {
-    return createJsonResponse({ success: false, error: '缺少 UID' });
-  }
+            <div class="form-group">
+                <label for="U_Six">性別</label>
+                <select id="U_Six">
+                    <option value="">請選擇</option>
+                    <option value="男">男</option>
+                    <option value="女">女</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
 
-  const url = `${APP_CONFIG.supabase.url}/rest/v1/Customer?U_ID=eq.${uid}&select=*`;
-  
-  const options = {
-    method: 'get',
-    headers: getSupabaseHeaders(), 
-    muteHttpExceptions: true
-  };
+            <div class="form-group">
+                <label for="U_Phone">手機號碼 <span style="color:red;">*</span></label>
+                <input type="tel" id="U_Phone" placeholder="09xxxxxxxx" required>
+            </div>
 
-  try {
-    const response = UrlFetchApp.fetch(url, options);
-    const data = JSON.parse(response.getContentText());
-    
-    if (data.error || data.code) {
-      return createJsonResponse({ success: false, error: data.message });
-    }
+            <div class="form-group">
+                <label for="U_Email">Email 電子信箱</label>
+                <input type="email" id="U_Email" placeholder="example@email.com">
+            </div>
 
-    if (Array.isArray(data) && data.length > 0) {
-      return createJsonResponse({ success: true, data: data[0] });
-    } else {
-      return createJsonResponse({ success: true, data: null });
-    }
-    
-  } catch (error) {
-    return createJsonResponse({ success: false, error: error.toString() });
-  }
-}
+            <!-- 🌟 更新後的地址區塊 -->
+            <div class="form-group">
+                <label>聯絡地址</label>
+                <div class="address-group">
+                    <select id="U_City" onchange="updateDistricts()" style="flex: 1;">
+                        <option value="">選擇縣市</option>
+                    </select>
+                    <select id="U_District" style="flex: 1;">
+                        <option value="">選擇區/鄉/鎮</option>
+                    </select>
+                </div>
+                <input type="text" id="U_Street" placeholder="請輸入街道、巷弄與門牌號碼">
+            </div>
+
+            <div class="form-group">
+                <label for="U_BirthDay">生日</label>
+                <input type="date" id="U_BirthDay">
+            </div>
+
+            <div class="form-group">
+                <label for="U_Memo">個人備註 (如：偏好服務)</label>
+                <textarea id="U_Memo" placeholder="有什麼想告訴我們的嗎？"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-group">
+                    <input type="checkbox" id="U_Marketing" checked>
+                    我願意接收毛孩美容的最新促銷與活動訊息
+                </label>
+            </div>
+
+            <button type="button" class="btn" id="submitBtn" onclick="submitForm()">儲存資料</button>
+        </form>
+    </div>
+
+    <script>
+        // ⚠️ 記得填入你自己的 GAS 網址
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTL ক্যামেরKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
+
+        // 🌟 台灣縣市與行政區資料
+        const taiwanDistricts = {
+            "台北市": ["中正區", "大同區", "中山區", "松山區", "大安區", "萬華區", "信義區", "士林區", "北投區", "內湖區", "南港區", "文山區"],
+            "新北市": ["板橋區", "三重區", "中和區", "永和區", "新莊區", "新店區", "樹林區", "鶯歌區", "三峽區", "淡水區", "汐止區", "瑞芳區", "土城區", "蘆洲區", "五股區", "泰山區", "林口區", "深坑區", "石碇區", "坪林區", "三芝區", "石門區", "八里區", "平溪區", "雙溪區", "貢寮區", "金山區", "萬里區", "烏來區"],
+            "桃園市": ["桃園區", "中壢區", "大溪區", "楊梅區", "蘆竹區", "大園區", "龜山區", "八德區", "龍潭區", "平鎮區", "新屋區", "觀音區", "復興區"],
+            "台中市": ["中區", "東區", "南區", "西區", "北區", "北屯區", "西屯區", "南屯區", "太平區", "大里區", "霧峰區", "烏日區", "豐原區", "后里區", "石岡區", "東勢區", "和平區", "新社區", "潭子區", "大雅區", "神岡區", "大肚區", "沙鹿區", "龍井區", "梧棲區", "清水區", "大甲區", "外埔區", "大安區"],
+            "台南市": ["中西區", "東區", "南區", "北區", "安平區", "安南區", "永康區", "歸仁區", "新化區", "左鎮區", "玉井區", "楠西區", "南化區", "仁德區", "關廟區", "龍崎區", "官田區", "麻豆區", "佳里區", "西港區", "七股區", "將軍區", "學甲區", "北門區", "新營區", "後壁區", "白河區", "東山區", "六甲區", "下營區", "柳營區", "鹽水區", "善化區", "大內區", "山上區", "新市區", "安定區"],
+            "高雄市": ["新興區", "前金區", "苓雅區", "鹽埕區", "鼓山區", "旗津區", "前鎮區", "三民區", "楠梓區", "小港區", "左營區", "仁武區", "大社區", "岡山區", "路竹區", "阿蓮區", "田寮區", "燕巢區", "橋頭區", "梓官區", "彌陀區", "永安區", "湖內區", "鳳山區", "大寮區", "林園區", "鳥松區", "大樹區", "旗山區", "美濃區", "六龜區", "內門區", "杉林區", "甲仙區", "桃源區", "那瑪夏區", "茂林區", "茄萣區"],
+            "基隆市": ["仁愛區", "信義區", "中正區", "中山區", "安樂區", "暖暖區", "七堵區"],
+            "新竹市": ["東區", "北區", "香山區"],
+            "嘉義市": ["東區", "西區"],
+            "新竹縣": ["竹北市", "竹東鎮", "新埔鎮", "關西鎮", "湖口鄉", "新豐鄉", "芎林鄉", "橫山鄉", "北埔鄉", "寶山鄉", "峨眉鄉", "尖石鄉", "五峰鄉"],
+            "苗栗縣": ["苗栗市", "苑裡鎮", "通霄鎮", "竹南鎮", "頭份市", "後龍鎮", "卓蘭鎮", "大湖鄉", "公館鄉", "銅鑼鄉", "南庄鄉", "頭屋鄉", "三義鄉", "西湖鄉", "造橋鄉", "三灣鄉", "獅潭鄉", "泰安鄉"],
+            "彰化縣": ["彰化市", "鹿港鎮", "和美鎮", "線西鄉", "伸港鄉", "福興鄉", "秀水鄉", "花壇鄉", "芬園鄉", "員林市", "溪湖鎮", "田中鎮", "大村鄉", "埔鹽鄉", "埔心鄉", "永靖鄉", "社頭鄉", "二水鄉", "北斗鎮", "二林鎮", "田尾鄉", "埤頭鄉", "芳苑鄉", "大城鄉", "竹塘鄉", "溪州鄉"],
+            "南投縣": ["南投市", "埔里鎮", "草屯鎮", "竹山鎮", "集集鎮", "名間鄉", "鹿谷鄉", "中寮鄉", "魚池鄉", "國姓鄉", "水里鄉", "信義鄉", "仁愛鄉"],
+            "雲林縣": ["斗六市", "斗南鎮", "虎尾鎮", "西螺鎮", "土庫鎮", "北港鎮", "古坑鄉", "大埤鄉", "莿桐鄉", "林內鄉", "二崙鄉", "崙背鄉", "麥寮鄉", "東勢鄉", "褒忠鄉", "臺西鄉", "元長鄉", "四湖鄉", "口湖鄉", "水林鄉"],
+            "嘉義縣": ["太保市", "朴子市", "布袋鎮", "大林鎮", "民雄鄉", "溪口鄉", "新港鄉", "六腳鄉", "東石鄉", "義竹鄉", "鹿草鄉", "水上鄉", "中埔鄉", "竹崎鄉", "梅山鄉", "番路鄉", "大埔鄉", "阿里山鄉"],
+            "屏東縣": ["屏東市", "潮州鎮", "東港鎮", "恆春鎮", "萬丹鄉", "長治鄉", "麟洛鄉", "九如鄉", "里港鄉", "鹽埔鄉", "高樹鄉", "萬巒鄉", "內埔鄉", "竹田鄉", "新埤鄉", "枋寮鄉", "新園鄉", "崁頂鄉", "林邊鄉", "南州鄉", "佳冬鄉", "琉球鄉", "車城鄉", "滿州鄉", "枋山鄉", "三地門鄉", "霧臺鄉", "瑪家鄉", "泰武鄉", "來義鄉", "春日鄉", "獅子鄉", "牡丹鄉"],
+            "宜蘭縣": ["宜蘭市", "羅東鎮", "蘇澳鎮", "頭城鎮", "礁溪鄉", "壯圍鄉", "員山鄉", "冬山鄉", "五結鄉", "三星鄉", "大同鄉", "南澳鄉"],
+            "花蓮縣": ["花蓮市", "鳳林鎮", "玉里鎮", "新城鄉", "吉安鄉", "壽豐鄉", "光復鄉", "豐濱鄉", "瑞穗鄉", "富里鄉", "秀林鄉", "萬榮鄉", "卓溪鄉"],
+            "台東縣": ["臺東市", "成功鎮", "關山鎮", "卑南鄉", "大武鄉", "太麻里鄉", "東河鄉", "長濱鄉", "鹿野鄉", "池上鄉", "綠島鄉", "延平鄉", "海端鄉", "達仁鄉", "金峰鄉", "蘭嶼鄉"],
+            "澎湖縣": ["馬公市", "湖西鄉", "白沙鄉", "西嶼鄉", "望安鄉", "七美鄉"],
+            "金門縣": ["金城鎮", "金湖鎮", "金沙鎮", "金寧鄉", "烈嶼鄉", "烏坵鄉"],
+            "連江縣": ["南竿鄉", "北竿鄉", "莒光鄉", "東引鄉"]
+        };
+
+        // 網頁載入時，初始化縣市選單
+        function initCityDropdown() {
+            const citySelect = document.getElementById('U_City');
+            for (let city in taiwanDistricts) {
+                let option = document.createElement("option");
+                option.value = city;
+                option.text = city;
+                citySelect.appendChild(option);
+            }
+        }
+
+        // 選擇縣市後，更新區域選單
+        function updateDistricts() {
+            const citySelect = document.getElementById('U_City');
+            const districtSelect = document.getElementById('U_District');
+            const selectedCity = citySelect.value;
+            
+            // 清空舊選項
+            districtSelect.innerHTML = '<option value="">選擇區/鄉/鎮</option>';
+            
+            if (selectedCity && taiwanDistricts[selectedCity]) {
+                taiwanDistricts[selectedCity].forEach(function(district) {
+                    let option = document.createElement("option");
+                    option.value = district;
+                    option.text = district;
+                    districtSelect.appendChild(option);
+                });
+            }
+        }
+
+        // 解析資料庫回傳的舊完整地址，自動拆解回三個欄位
+        function parseAndSetAddress(fullAddress) {
+            if (!fullAddress) return;
+
+            let cityMatch = "";
+            let districtMatch = "";
+            let streetMatch = fullAddress;
+
+            // 1. 找縣市 (容錯包含「臺」與「台」)
+            for (let city in taiwanDistricts) {
+                let altCity = city.replace('台', '臺');
+                let altCity2 = city.replace('臺', '台');
+                
+                if (fullAddress.startsWith(city) || fullAddress.startsWith(altCity) || fullAddress.startsWith(altCity2)) {
+                    cityMatch = city;
+                    // 將找到的縣市名稱從字串中切除
+                    let matchedStr = fullAddress.startsWith(city) ? city : (fullAddress.startsWith(altCity) ? altCity : altCity2);
+                    streetMatch = fullAddress.substring(matchedStr.length);
+                    break;
+                }
+            }
+
+            if (cityMatch) {
+                document.getElementById('U_City').value = cityMatch;
+                updateDistricts();
+
+                // 2. 找區域
+                const districts = taiwanDistricts[cityMatch];
+                for (let i = 0; i < districts.length; i++) {
+                    let dist = districts[i];
+                    if (streetMatch.startsWith(dist)) {
+                        districtMatch = dist;
+                        streetMatch = streetMatch.substring(dist.length);
+                        break;
+                    }
+                }
+
+                if (districtMatch) {
+                    document.getElementById('U_District').value = districtMatch;
+                }
+            }
+            
+            // 3. 剩下的字串就是路名與門牌
+            document.getElementById('U_Street').value = streetMatch;
+        }
+
+        function getParamFromUrl(paramName) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(paramName);
+        }
+
+        window.onload = async function() {
+            initCityDropdown(); // 初始化縣市下拉選單
+
+            const uid = getParamFromUrl('uid');
+            const lineName = getParamFromUrl('name');
+            
+            if (!uid) {
+                document.getElementById('display-uid').innerText = "無法取得系統授權碼，請從 LINE 重新進入";
+                return;
+            }
+
+            document.getElementById('U_ID').value = uid;
+            document.getElementById('display-uid').innerText = `專屬 ID: ${uid}`;
+            
+            document.getElementById('loading-overlay').style.display = 'block';
+            document.getElementById('memberForm').style.display = 'none';
+
+            try {
+                const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const dbData = result.data;
+                    document.getElementById('U_LineName').value = lineName || dbData.U_LineName || '';
+                    document.getElementById('U_Name').value = dbData.U_Name || '';
+                    document.getElementById('U_Six').value = dbData.U_Six || '';
+                    document.getElementById('U_Phone').value = dbData.U_Phone || '';
+                    document.getElementById('U_Email').value = dbData.U_Email || '';
+                    
+                    // 🌟 呼叫地址拆解函式
+                    parseAndSetAddress(dbData.U_Addr);
+                    
+                    document.getElementById('U_BirthDay').value = dbData.U_BirthDay || '';
+                    document.getElementById('U_Memo').value = dbData.U_Memo || '';
+                    document.getElementById('U_Marketing').checked = dbData.U_Marketing !== false; 
+                } else {
+                    document.getElementById('U_LineName').value = lineName || '';
+                    document.getElementById('U_Name').value = lineName || '';
+                }
+            } catch (error) {
+                console.error("資料讀取失敗:", error);
+                document.getElementById('U_LineName').value = lineName || '';
+                document.getElementById('U_Name').value = lineName || '';
+            } finally {
+                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('memberForm').style.display = 'block';
+            }
+        };
+
+        async function submitForm() {
+            const uid = document.getElementById('U_ID').value;
+            const lineName = document.getElementById('U_LineName').value;
+            const name = document.getElementById('U_Name').value;
+            const six = document.getElementById('U_Six').value;
+            const phone = document.getElementById('U_Phone').value;
+            const email = document.getElementById('U_Email').value;
+            const birthday = document.getElementById('U_BirthDay').value;
+            const memo = document.getElementById('U_Memo').value;
+            const marketing = document.getElementById('U_Marketing').checked; 
+
+            // 🌟 將地址的三個欄位組裝回一個字串
+            const city = document.getElementById('U_City').value;
+            const district = document.getElementById('U_District').value;
+            const street = document.getElementById('U_Street').value;
+            let fullAddr = "";
+            if (city || district || street) {
+                fullAddr = city + district + street;
+            }
+
+            if (!uid || !name || !phone) {
+                alert("請確認「真實姓名」與「手機號碼」皆已填寫！");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = '資料儲存中...';
+            btn.disabled = true;
+
+            const requestData = {
+                action: 'insertUser', 
+                payload: {
+                    uid: uid,
+                    lineName: lineName,
+                    name: name,
+                    six: six,
+                    phone: phone,
+                    email: email,
+                    addr: fullAddr, // 🌟 傳送組裝好的完整地址給 GAS
+                    birthday: birthday,
+                    memo: memo,
+                    marketing: marketing
+                }
+            };
+
+            try {
+                const response = await fetch(GAS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('資料儲存成功！將為您跳轉回會員中心。');
+                    window.location.replace('CustomerCenter.html'); 
+                } else {
+                    alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
+                    btn.innerText = '儲存資料';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error(error);
+                alert('網路連線錯誤，請稍後再試。');
+                btn.innerText = '儲存資料';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
