@@ -34,16 +34,10 @@
         <form id="memberForm" style="display: none;">
             <input type="hidden" id="U_ID">
 
-            <!--
-            <div class="form-group">
-                <label for="U_LineName">LINE 暱稱</label>
-                <input type="text" id="U_LineName" readonly style="background: #e9ecef; color: #666;">
-            </div>
-            -->
             <input type="hidden" id="U_LineName">
             
             <div class="form-group">
-                <label for="U_Name">真實姓名 <span style="color:red;">*</span></label>
+                <label for="U_Name">姓名 <span style="color:red;">*</span></label>
                 <input type="text" id="U_Name" placeholder="請輸入姓名" required>
             </div>
 
@@ -281,7 +275,7 @@
             document.getElementById('memberForm').style.display = 'none';
 
             try {
-                //const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
+                // const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const response = await fetch(`${CONFIG.GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const result = await response.json();
 
