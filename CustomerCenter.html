@@ -50,6 +50,7 @@
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
                     currentUid = profile.userId; // 把取得的 UID 存起來
+                    currentName = profile.displayName; //把取得的 LINE 暱稱 存起來
                     checkUserExists(currentUid);
                 } else {
                     liff.login();
