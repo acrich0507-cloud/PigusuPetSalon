@@ -31,9 +31,9 @@
         <hr style="margin: 20px 0; border-top: 1px solid #eee;">
         
         <!-- 功能按鈕 -->
-        <button class="btn" onclick="location.href='CustomerMaintain.html'">會員資料維護</button>
-        <button class="btn" onclick="location.href='PetMaintain.html'">毛小孩資料維護</button>
-        <button class="btn btn-secondary" onclick="location.href='BookingSelect.html'">預約記錄查詢</button>
+        <button class="btn" id="location.href='CustomerMaintain.html'">會員資料維護</button>
+        <button class="btn" id="location.href='PetMaintain.html'">毛小孩資料維護</button>
+        <button class="btn btn-secondary" id="location.href='BookingSelect.html'">預約記錄查詢</button>
     </div>
 
     <script>
@@ -80,9 +80,15 @@
                     colorDark : "#000000",
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
+
+ 
                 });
-            
-            } else {
+                
+                // 🌟 【新增這裡】動態綁定按鈕連結，確保帶上 UID
+                document.getElementById('btnMemberEdit').onclick = () => location.href = `CustomerMaintain.html?uid=${uid}`;
+                document.getElementById('btnPetEdit').onclick = () => location.href = `PetMaintain.html?uid=${uid}`;
+                document.getElementById('btnBooking').onclick = () => location.href = `BookingSelect.html?uid=${uid}`;   
+                } else {
             
                 // 【條件 2：不存在】強制跳轉到會員資料維護頁面，並帶上 uid 參數
                 console.log("查無會員，自動跳轉註冊頁面...");
