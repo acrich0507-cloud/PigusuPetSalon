@@ -58,39 +58,46 @@
 
         async function checkUserExists(uid) {
             document.getElementById('loading').innerText = "正在驗證會員資料...";
-            
-            try {
-                const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
-                const result = await response.json();
+    
+        try {
+            // 呼叫 GAS API (對應 Main.gs 裡的 action=checkUser)
+            const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
+            const result = await response.json();
 
-                if (result.exists) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('content').style.display = 'block';
-                    document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
-                    
-                    new QRCode(document.getElementById("qrcode"), {
-                        text: uid,
-                        width: 160,
-                        height: 160,
-                        colorDark : "#000000",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                    });
-                } else {
-                    // 自動跳轉至會員資料維護頁面，帶上 UID
-                    window.location.replace(`${REGISTER_PAGE_URL}?uid=${uid}`);
-                }
-            } catch (err) {
-                console.error("API 呼叫失敗", err);
+            // ======= 核心導流邏輯 =======
+            if (result.exists === true) {
+            
+                // 【條件 1：已存在】隱藏載入中，顯示首頁內容與 QR Code
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
-                document.getElementById('uid-display').innerText = `(測試模式) 您的 UID: ${uid}`;
-                new QRCode(document.getElementById("qrcode"), { text: uid, width: 160, height: 160 });
-                alert("無法連線到 GAS 後端，目前以測試模式顯示畫面。");
-            }
-        }
+                document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
+            
+                // 產生條碼
+                new QRCode(document.getElementById("qrcode"), {
+                    text: uid,
+                    width: 160,
+                    height: 160,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            
+            } else {
+            
+                // 【條件 2：不存在】強制跳轉到會員資料維護頁面，並帶上 uid 參數
+                console.log("查無會員，自動跳轉註冊頁面...");
+                window.location.replace(`CustomerMaintain.html?uid=${uid}`);
+            
+                }
+            // ==============================
 
-        initApp();
+        } catch (err) {
+            console.error("API 呼叫失敗", err);
+            document.getElementById('loading').innerText = "系統連線異常，請稍後再試。";
+        }
+    }    
+
+    initApp();
     </script>
 </body>
 </html>
