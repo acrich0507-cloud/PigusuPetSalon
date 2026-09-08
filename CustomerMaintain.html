@@ -28,16 +28,20 @@
     <div class="form-container">
         <h2>會員資料維護</h2>
         <div id="loading-overlay">資料讀取中，請稍候...</div>
-        <div class="header-text" id="display-uid"></div>
+        //<div class="header-text" id="display-uid"></div>
+        <div class="header-text" id="display-uid" style="display: none;"></div>
 
         <form id="memberForm" style="display: none;">
             <input type="hidden" id="U_ID">
 
+            <!--
             <div class="form-group">
                 <label for="U_LineName">LINE 暱稱</label>
                 <input type="text" id="U_LineName" readonly style="background: #e9ecef; color: #666;">
             </div>
-
+            -->
+            <input type="hidden" id="U_LineName">
+            
             <div class="form-group">
                 <label for="U_Name">真實姓名 <span style="color:red;">*</span></label>
                 <input type="text" id="U_Name" placeholder="請輸入姓名" required>
@@ -77,9 +81,26 @@
                 <input type="text" id="U_Street" placeholder="請輸入街道、巷弄與門牌號碼">
             </div>
 
+            <!--
             <div class="form-group">
                 <label for="U_BirthDay">生日</label>
                 <input type="date" id="U_BirthDay">
+            </div>
+            -->
+            
+            <div class="form-group">
+                <label>生日</label>
+                <div class="address-group">
+                    <select id="U_BirthYear" style="flex: 1;">
+                        <option value="">年份</option>
+                    </select>
+                    <select id="U_BirthMonth" style="flex: 1;">
+                        <option value="">月份</option>
+                    </select>
+                    <select id="U_BirthDay" style="flex: 1;">
+                        <option value="">日期</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
@@ -158,6 +179,38 @@
             }
         }
 
+        //生日下拉選單
+        function initDateDropdowns() {
+            const yearSelect = document.getElementById('U_BirthYear');
+            const monthSelect = document.getElementById('U_BirthMonth');
+            const daySelect = document.getElementById('U_BirthDay');
+            
+            const currentYear = new Date().getFullYear();
+            // 產生年份 (1930 ~ 今年)
+            for (let i = currentYear; i >= 1930; i--) {
+                let option = document.createElement("option");
+                option.value = i;
+                option.text = i + '年';
+                yearSelect.appendChild(option);
+            }
+            // 產生月份 (01 ~ 12)
+            for (let i = 1; i <= 12; i++) {
+                let m = i < 10 ? '0' + i : i;
+                let option = document.createElement("option");
+                option.value = m;
+                option.text = m + '月';
+                monthSelect.appendChild(option);
+            }
+            // 產生日期 (01 ~ 31)
+            for (let i = 1; i <= 31; i++) {
+                let d = i < 10 ? '0' + i : i;
+                let option = document.createElement("option");
+                option.value = d;
+                option.text = d + '日';
+                daySelect.appendChild(option);
+            }
+        }
+
         // 解析資料庫回傳的舊完整地址，自動拆解回三個欄位
         function parseAndSetAddress(fullAddress) {
             if (!fullAddress) return;
@@ -211,6 +264,7 @@
 
         window.onload = async function() {
             initCityDropdown(); // 初始化縣市下拉選單
+            initDateDropdowns(); // 🌟 1. 呼叫生日初始化函式
 
             const uid = getParamFromUrl('uid');
             const lineName = getParamFromUrl('name');
@@ -242,7 +296,15 @@
                     // 🌟 呼叫地址拆解函式
                     parseAndSetAddress(dbData.U_Addr);
                     
-                    document.getElementById('U_BirthDay').value = dbData.U_BirthDay || '';
+                    if (dbData.U_BirthDay) {
+                        const parts = dbData.U_BirthDay.split('-');
+                        if (parts.length >= 3) {
+                            document.getElementById('U_BirthYear').value = parts[0];
+                            document.getElementById('U_BirthMonth').value = parts[1];
+                            document.getElementById('U_BirthDay').value = parts[2].substring(0, 2); 
+                        }
+                    }
+                    
                     document.getElementById('U_Memo').value = dbData.U_Memo || '';
                     document.getElementById('U_Marketing').checked = dbData.U_Marketing !== false; 
                 } else {
@@ -266,11 +328,11 @@
             const six = document.getElementById('U_Six').value;
             const phone = document.getElementById('U_Phone').value;
             const email = document.getElementById('U_Email').value;
-            const birthday = document.getElementById('U_BirthDay').value;
+            //const birthday = document.getElementById('U_BirthDay').value;
             const memo = document.getElementById('U_Memo').value;
             const marketing = document.getElementById('U_Marketing').checked; 
 
-            // 🌟 將地址的三個欄位組裝回一個字串
+            // 將地址的三個欄位組裝回一個字串
             const city = document.getElementById('U_City').value;
             const district = document.getElementById('U_District').value;
             const street = document.getElementById('U_Street').value;
@@ -278,7 +340,16 @@
             if (city || district || street) {
                 fullAddr = city + district + street;
             }
-
+            
+            //將生日的三個欄位組裝回 YYYY-MM-DD 字串
+            const bYear = document.getElementById('U_BirthYear').value;
+            const bMonth = document.getElementById('U_BirthMonth').value;
+            const bDay = document.getElementById('U_BirthDay').value;
+            let birthday = "";
+            if (bYear && bMonth && bDay) {
+                birthday = `${bYear}-${bMonth}-${bDay}`;
+            }
+            
             if (!uid || !name || !phone) {
                 alert("請確認「真實姓名」與「手機號碼」皆已填寫！");
                 return;
