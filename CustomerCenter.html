@@ -21,6 +21,8 @@
     
     <div id="content">
         <h2>您的專屬會員碼</h2>
+
+        <h3 id="name-display" style="color: #00B900; margin-bottom: 15px;"></h3>
         
         <div id="qrcode"></div>
         <p id="uid-display" class="uid-text"></p>
@@ -68,6 +70,7 @@
                 if (result.exists === true) {
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('content').style.display = 'block';
+                    document.getElementById('name-display').innerText = `${currentName} 您好！`;
                     document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
                     
                     // 產生 QR Code
