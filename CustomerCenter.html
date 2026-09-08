@@ -101,8 +101,8 @@
                 alert("尚未取得您的會員資料，請稍後再試！");
                 return;
             }
-            // 執行跳轉並把 UID 帶在網址後面
-            window.location.href = `${pageName}?uid=${currentUid}`;
+            // 執行跳轉並把[UID]、[Line暱稱]帶在網址後面
+            window.location.href = `${pageName}?uid=${currentUid}&name=${encodeURIComponent(currentName)}`;
         }
 
         initApp();
