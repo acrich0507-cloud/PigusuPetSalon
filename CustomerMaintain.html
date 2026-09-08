@@ -71,10 +71,17 @@
 
         // 準備送出表單的函式 (GAS 新增邏輯稍後再補上)
         async function submitForm() {
+            // 抓取畫面上所有的欄位值
             const uid = document.getElementById('U_ID').value;
+            const lineName = document.getElementById('U_LineName').value;
             const name = document.getElementById('U_Name').value;
+            const six = document.getElementById('U_Six').value;
             const phone = document.getElementById('U_Phone').value;
+            const email = document.getElementById('U_Email').value;
+            const addr = document.getElementById('U_Addr').value;
             const birthday = document.getElementById('U_BirthDay').value;
+            const memo = document.getElementById('U_Memo').value;
+            const marketing = document.getElementById('U_Marketing').checked; // 抓取勾選狀態
 
             if (!uid || !name || !phone) {
                 alert("請確認姓名與電話皆已填寫！");
@@ -86,22 +93,28 @@
             btn.innerText = '資料儲存中...';
             btn.disabled = true;
 
+            
             // ⚠️ 記得填入你自己的 GAS 網址
             const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec"; 
 
             const requestData = {
-                action: 'insertUser',
+                action: 'insertUser', // 對應 GAS 中的 switch(action)
                 payload: {
                     uid: uid,
+                    lineName: lineName,
                     name: name,
+                    six: six,
                     phone: phone,
-                    birthday: birthday
+                    email: email,
+                    addr: addr,
+                    birthday: birthday,
+                    memo: memo,
+                    marketing: marketing
                 }
             };
 
             try {
                 // 發送 POST 請求至 GAS
-                // 使用 text/plain 避免瀏覽器 CORS 預檢請求 (Preflight) 的問題
                 const response = await fetch(GAS_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -116,7 +129,7 @@
                     window.location.replace('CustomerCenter.html'); 
                 } else {
                     alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
-                    btn.innerText = '確認送出';
+                    btn.innerText = '儲存資料';
                     btn.disabled = false;
                 }
             } catch (error) {
