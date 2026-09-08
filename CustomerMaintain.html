@@ -117,6 +117,9 @@
                 const response = await fetch(`${GAS_API_URL}?action=getUserData&uid=${uid}`);
                 const result = await response.json();
 
+                // 🌟 新增這行：讓系統強制跳出 GAS 的回傳結果
+                alert("後端回傳結果：" + JSON.stringify(result));
+                
                 if (result.success && result.data) {
                     // 🟢 狀況 A：舊會員，將資料庫的資料填入表單
                     const dbData = result.data;
