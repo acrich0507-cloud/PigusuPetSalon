@@ -38,8 +38,9 @@
         const LIFF_ID = "2011433016-ReLRLT5q"; 
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
         
-        // 宣告一個全域變數，用來記住顧客的 UID
+        // 宣告一個全域變數，用來記住顧客的 UID及Line暱稱
         let currentUid = ""; 
+        let currentName = "";
 
         async function initApp() {
             try {
@@ -80,7 +81,9 @@
                         correctLevel : QRCode.CorrectLevel.H
                     });
                 } else {
-                    window.location.replace(`CustomerMaintain.html?uid=${uid}`);
+                    // 跳轉時，將 uid 和 name 一起帶過去
+                    // 使用 encodeURIComponent 是為了避免暱稱中有特殊符號或表情符號導致網址失效
+                    window.location.replace(`CustomerMaintain.html?uid=${uid}&name=${encodeURIComponent(currentName)}`);
                 }
             } catch (err) {
                 console.error("API 呼叫失敗", err);
