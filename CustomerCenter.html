@@ -4,73 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>毛孩美容會員中心</title>
+    
+    <!-- 引入共用設定檔 -->
     <script src="config.js"></script>
+    
+    <!-- 引入共用外觀樣式檔 -->
+    <link rel="stylesheet" href="style.css">
+    
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 20px; background: #f4f4f4; color: #333; }
-        #content { display: none; background: #fff; padding: 30px 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #qrcode { display: flex; justify-content: center; margin: 20px 0; }
-        .btn { display: block; width: 100%; padding: 15px; margin: 12px 0; background: #00B900; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .btn-secondary { background: #555; }
-        .loading-text { font-size: 18px; color: #666; margin-top: 50px; }
-        .uid-text { font-size: 12px; color: gray; word-break: break-all; margin-top: 10px; }
-    </style>
 </head>
 <body>
-    <div id="loading" class="loading-text">正在讀取您的 LINE 資訊...</div>
+    
+    <!-- 優化後的讀取畫面 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">正在讀取您的 LINE 資訊...</div>
+    </div>
     
     <div id="content">
-        <h2>您的專屬會員碼</h2>
-
-        <h3 id="name-display" style="color: #00B900; margin-bottom: 15px;"></h3>
+        <h2>專屬會員卡</h2>
+        <h3 id="name-display"></h3>
         
-        <div id="qrcode"></div>
+        <!-- QR Code 加上專屬外框 -->
+        <div class="qrcode-wrapper">
+            <div id="qrcode"></div>
+        </div>
+        
         <p id="uid-display" class="uid-text"></p>
         
-        <hr style="margin: 20px 0; border-top: 1px solid #eee;">
+        <hr>
         
-        <!-- 🌟 更新這裡：直接在按鈕上呼叫 goToPage 函式 -->
         <button class="btn" onclick="goToPage('CustomerMaintain.html')">會員資料維護</button>
         <button class="btn" onclick="goToPage('PetMaintain.html')">毛小孩資料維護</button>
         <button class="btn btn-secondary" onclick="goToPage('BookingSelect.html')">預約記錄查詢</button>
     </div>
 
     <script>
-        // ⚠️ 請記得把這裡換成你真實的 LIFF ID 與 GAS URL
-        //const LIFF_ID = "2011433016-ReLRLT5q"; 
-        //const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
-        
-        // 宣告一個全域變數，用來記住顧客的 UID及Line暱稱
         let currentUid = ""; 
         let currentName = "";
 
         async function initApp() {
             try {
-                //await liff.init({ liffId: LIFF_ID });
                 await liff.init({ liffId: CONFIG.LIFF_ID });
                 
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
-                    currentUid = profile.userId; // 把取得的 UID 存起來
-                    currentName = profile.displayName; //把取得的 LINE 暱稱 存起來
+                    currentUid = profile.userId; 
+                    currentName = profile.displayName; 
                     checkUserExists(currentUid);
                 } else {
                     liff.login();
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('loading').innerText = "LINE 系統載入失敗，請確認 LIFF ID 是否正確。";
+                document.getElementById('loading').innerHTML = "<div class='loading-text' style='color:red;'>LINE 系統載入失敗，請確認 LIFF ID 是否正確。</div>";
             }
         }
 
         async function checkUserExists(uid) {
-            document.getElementById('loading').innerText = "正在驗證會員資料...";
-            
             try {
-                //const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
-                //const result = await response.json();
-
                 const response = await fetch(`${CONFIG.GAS_API_URL}?action=checkUser&uid=${uid}`);
                 const result = await response.json();
 
@@ -78,36 +71,32 @@
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('content').style.display = 'block';
                     document.getElementById('name-display').innerText = `${currentName} 您好！`;
-                    document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
+                    document.getElementById('uid-display').innerText = `UID: ${uid}`;
                     
                     // 產生 QR Code
-                    document.getElementById("qrcode").innerHTML = ""; // 先清空，避免重複產生
+                    document.getElementById("qrcode").innerHTML = ""; 
                     new QRCode(document.getElementById("qrcode"), {
                         text: uid,
-                        width: 160,
-                        height: 160,
-                        colorDark : "#000000",
+                        width: 150,
+                        height: 150,
+                        colorDark : "#222222",
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.H
                     });
                 } else {
-                    // 跳轉時，將 uid 和 name 一起帶過去
-                    // 使用 encodeURIComponent 是為了避免暱稱中有特殊符號或表情符號導致網址失效
                     window.location.replace(`CustomerMaintain.html?uid=${uid}&name=${encodeURIComponent(currentName)}`);
                 }
             } catch (err) {
                 console.error("API 呼叫失敗", err);
-                document.getElementById('loading').innerText = "系統連線異常，請稍後再試。";
+                document.getElementById('loading').innerHTML = "<div class='loading-text' style='color:red;'>系統連線異常，請稍後再試。</div>";
             }
         }
 
-        // 🌟 新增這個共用的跳轉函式
         function goToPage(pageName) {
             if (!currentUid) {
                 alert("尚未取得您的會員資料，請稍後再試！");
                 return;
             }
-            // 執行跳轉並把[UID]、[Line暱稱]帶在網址後面
             window.location.href = `${pageName}?uid=${currentUid}&name=${encodeURIComponent(currentName)}`;
         }
 
