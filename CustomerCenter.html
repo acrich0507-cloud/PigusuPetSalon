@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>毛孩美容會員中心</title>
-    <!-- 引入 LINE LIFF SDK -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- 引入 QRCode.js 生成條碼 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: center; padding: 20px; background: #f4f4f4; color: #333; }
@@ -21,7 +19,6 @@
 <body>
     <div id="loading" class="loading-text">正在讀取您的 LINE 資訊...</div>
     
-    <!-- 主內容區塊 -->
     <div id="content">
         <h2>您的專屬會員碼</h2>
         
@@ -30,23 +27,27 @@
         
         <hr style="margin: 20px 0; border-top: 1px solid #eee;">
         
-        <!-- 功能按鈕 -->
-        <button class="btn" id="location.href='CustomerMaintain.html'">會員資料維護</button>
-        <button class="btn" id="location.href='PetMaintain.html'">毛小孩資料維護</button>
-        <button class="btn btn-secondary" id="location.href='BookingSelect.html'">預約記錄查詢</button>
+        <!-- 🌟 更新這裡：直接在按鈕上呼叫 goToPage 函式 -->
+        <button class="btn" onclick="goToPage('CustomerMaintain.html')">會員資料維護</button>
+        <button class="btn" onclick="goToPage('PetMaintain.html')">毛小孩資料維護</button>
+        <button class="btn btn-secondary" onclick="goToPage('BookingSelect.html')">預約記錄查詢</button>
     </div>
 
     <script>
+        // ⚠️ 請記得把這裡換成你真實的 LIFF ID 與 GAS URL
         const LIFF_ID = "2011433016-ReLRLT5q"; 
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-4Ou7OgwVapyrKjVsgx6RWdPwuKTn0aIkdkrTLNw38qnoCLyHldGVOTzIK5gDWhyr7Q/exec";
-        const REGISTER_PAGE_URL = "CustomerMaintain.html"; // 對齊你的命名
+        
+        // 宣告一個全域變數，用來記住顧客的 UID
+        let currentUid = ""; 
 
         async function initApp() {
             try {
                 await liff.init({ liffId: LIFF_ID });
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
-                    checkUserExists(profile.userId);
+                    currentUid = profile.userId; // 把取得的 UID 存起來
+                    checkUserExists(currentUid);
                 } else {
                     liff.login();
                 }
@@ -58,52 +59,46 @@
 
         async function checkUserExists(uid) {
             document.getElementById('loading').innerText = "正在驗證會員資料...";
-    
-        try {
-            // 呼叫 GAS API (對應 Main.gs 裡的 action=checkUser)
-            const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
-            const result = await response.json();
-
-            // ======= 核心導流邏輯 =======
-            if (result.exists === true) {
             
-                // 【條件 1：已存在】隱藏載入中，顯示首頁內容與 QR Code
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('content').style.display = 'block';
-                document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
-            
-                // 產生條碼
-                new QRCode(document.getElementById("qrcode"), {
-                    text: uid,
-                    width: 160,
-                    height: 160,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
+            try {
+                const response = await fetch(`${GAS_API_URL}?action=checkUser&uid=${uid}`);
+                const result = await response.json();
 
- 
-                });
-                
-                // 🌟 【新增這裡】動態綁定按鈕連結，確保帶上 UID
-                document.getElementById('btnMemberEdit').onclick = () => location.href = `CustomerMaintain.html?uid=${uid}`;
-                document.getElementById('btnPetEdit').onclick = () => location.href = `PetMaintain.html?uid=${uid}`;
-                document.getElementById('btnBooking').onclick = () => location.href = `BookingSelect.html?uid=${uid}`;   
+                if (result.exists === true) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('content').style.display = 'block';
+                    document.getElementById('uid-display').innerText = `LINE UID: ${uid}`;
+                    
+                    // 產生 QR Code
+                    document.getElementById("qrcode").innerHTML = ""; // 先清空，避免重複產生
+                    new QRCode(document.getElementById("qrcode"), {
+                        text: uid,
+                        width: 160,
+                        height: 160,
+                        colorDark : "#000000",
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
                 } else {
-            
-                // 【條件 2：不存在】強制跳轉到會員資料維護頁面，並帶上 uid 參數
-                console.log("查無會員，自動跳轉註冊頁面...");
-                window.location.replace(`CustomerMaintain.html?uid=${uid}`);
-            
+                    window.location.replace(`CustomerMaintain.html?uid=${uid}`);
                 }
-            // ==============================
-
-        } catch (err) {
-            console.error("API 呼叫失敗", err);
-            document.getElementById('loading').innerText = "系統連線異常，請稍後再試。";
+            } catch (err) {
+                console.error("API 呼叫失敗", err);
+                document.getElementById('loading').innerText = "系統連線異常，請稍後再試。";
+            }
         }
-    }    
 
-    initApp();
+        // 🌟 新增這個共用的跳轉函式
+        function goToPage(pageName) {
+            if (!currentUid) {
+                alert("尚未取得您的會員資料，請稍後再試！");
+                return;
+            }
+            // 執行跳轉並把 UID 帶在網址後面
+            window.location.href = `${pageName}?uid=${currentUid}`;
+        }
+
+        initApp();
     </script>
 </body>
 </html>
