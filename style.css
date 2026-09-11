@@ -1,136 +1,219 @@
+:root {
+    --color-bg: #f0f4f8;
+    --color-card: #fff;
+    --color-text: #333;
+    --color-heading: #222;
+    --color-muted: #555;
+    --color-placeholder: #aaa;
+    --color-border: #e4e7eb;
+    --color-border-soft: #eef2f6;
+    --color-input-bg: #fbfcfd;
+    --color-line: #00B900;
+    --color-line-start: #00C300;
+    --color-line-end: #00A000;
+    --color-disabled: #cbd5e1;
+    --color-error: #ff4d4f;
+    --radius-card: 16px;
+    --radius-control: 10px;
+}
 
-/* 基礎設定與背景 */
-body { 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-    padding: 20px 15px; 
-    background: #f0f4f8; 
-    color: #333; 
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    padding: 20px 15px;
+    background: var(--color-bg);
+    color: var(--color-text);
     margin: 0;
 }
-/* 表單主體卡片 */
-.form-container { 
-    background: #fff; 
-    padding: 30px 25px; 
-    border-radius: 16px; 
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06); 
-    max-width: 500px; 
-    margin: 0 auto; 
-}
-h2 { 
-    text-align: center; 
-    color: #222; 
-    font-size: 22px; 
-    margin-top: 0;
-    margin-bottom: 25px; 
-    font-weight: 700; 
-}
-/* 欄位群組 */
-.form-group { margin-bottom: 20px; }
-.form-group label { 
-    display: block; 
-    font-weight: 600; 
-    margin-bottom: 8px; 
-    color: #555; 
-    font-size: 14px; 
-}
-.required-star { color: #ff4d4f; margin-left: 4px; }
 
-/* 統一的輸入框與選單風格 */
-.form-control { 
-    width: 100%; 
-    padding: 14px; 
-    border: 1.5px solid #e4e7eb; 
-    border-radius: 10px; 
-    box-sizing: border-box; 
-    font-size: 16px; 
-    background-color: #fbfcfd; 
-    color: #333;
-    transition: all 0.3s ease; 
+.form-container {
+    background: var(--color-card);
+    padding: 30px 25px;
+    border-radius: var(--radius-card);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    max-width: 500px;
+    margin: 0 auto;
 }
-.form-control:focus { 
-    border-color: #00B900; 
-    background-color: #fff; 
-    outline: none; 
-    box-shadow: 0 0 0 4px rgba(0, 185, 0, 0.1); 
+
+h2 {
+    text-align: center;
+    color: var(--color-heading);
+    font-size: 22px;
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-weight: 700;
 }
-.form-control::placeholder { color: #aaa; }
+
+.member-greeting {
+    text-align: center;
+    color: var(--color-heading);
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0 0 20px;
+}
+
+.form-group { margin-bottom: 20px; }
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--color-muted);
+    font-size: 14px;
+}
+.required-star { color: var(--color-error); margin-left: 4px; }
+
+.form-control {
+    width: 100%;
+    padding: 14px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-control);
+    box-sizing: border-box;
+    font-size: 16px;
+    background-color: var(--color-input-bg);
+    color: var(--color-text);
+    transition: all 0.3s ease;
+}
+.form-control:focus {
+    border-color: var(--color-line);
+    background-color: var(--color-card);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(0, 185, 0, 0.1);
+}
+.form-control::placeholder { color: var(--color-placeholder); }
 textarea.form-control { resize: vertical; min-height: 90px; }
 
-/* 自訂下拉選單外觀 (消除原生樣式，加上專屬箭頭) */
-select.form-control { 
-    appearance: none; 
-    -webkit-appearance: none; 
-    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>'); 
-    background-repeat: no-repeat; 
-    background-position: right 14px center; 
-    background-size: 14px; 
-    padding-right: 40px; 
+select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    padding-right: 40px;
 }
 
-/* 組合欄位 (地址、生日) */
 .flex-group { display: flex; gap: 10px; margin-bottom: 12px; }
 
-/* 勾選框區塊優化 */
 .checkbox-container {
     background: #f8fafc;
-    border: 1px solid #eef2f6;
+    border: 1px solid var(--color-border-soft);
     padding: 15px;
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     margin-top: 10px;
 }
-.checkbox-group { 
-    display: flex; 
-    align-items: flex-start; 
-    gap: 12px; 
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     cursor: pointer;
     margin: 0;
 }
-.checkbox-group input[type="checkbox"] { 
-    width: 22px; 
-    height: 22px; 
-    accent-color: #00B900; 
+.checkbox-group input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--color-line);
     flex-shrink: 0;
     margin-top: 2px;
     cursor: pointer;
 }
-.checkbox-group span { font-size: 14px; color: #555; line-height: 1.5; }
+.checkbox-group span { font-size: 14px; color: var(--color-muted); line-height: 1.5; }
 
-/* 現代化按鈕設計 */
-.btn { 
-    width: 100%; 
-    padding: 16px; 
-    background: linear-gradient(135deg, #00C300, #00A000); 
-    color: white; 
-    border: none; 
-    border-radius: 10px; 
-    font-size: 18px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    margin-top: 15px; 
+.qrcode-wrapper {
+    display: flex;
+    justify-content: center;
+    margin: 0 0 16px;
+}
+#qrcode {
+    padding: 16px;
+    background: var(--color-card);
+    border: 1px solid var(--color-border-soft);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+#qrcode img,
+#qrcode canvas,
+#qrcode table {
+    display: block;
+    margin: 0 auto;
+}
+
+.uid-text {
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+    word-break: break-all;
+    margin: 0 0 8px;
+}
+
+.section-divider {
+    border: none;
+    border-top: 1px solid var(--color-border-soft);
+    margin: 24px 0 8px;
+}
+
+.action-stack .btn:first-child {
+    margin-top: 0;
+}
+
+.btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--color-line-start), var(--color-line-end));
+    color: white;
+    border: none;
+    border-radius: var(--radius-control);
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
     box-shadow: 0 4px 12px rgba(0, 185, 0, 0.25);
-    transition: transform 0.1s, box-shadow 0.2s; 
+    transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
 }
-.btn:active { 
-    transform: scale(0.98); 
-    box-shadow: 0 2px 6px rgba(0, 185, 0, 0.15); 
+.btn:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 6px rgba(0, 185, 0, 0.15);
 }
-.btn:disabled { 
-    background: #cbd5e1; 
-    box-shadow: none; 
-    cursor: not-allowed; 
-    transform: none; 
+.btn:disabled {
+    background: var(--color-disabled);
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-secondary {
+    background: var(--color-card);
+    color: var(--color-line-end);
+    border: 1.5px solid var(--color-line);
+    box-shadow: none;
+}
+.btn-secondary:active {
+    background: #f6fff6;
+    box-shadow: none;
 }
 
-/* 讀取中動畫 (Spinner) */
-#loading-overlay { display: none; text-align: center; padding: 30px 0; }
+#loading-overlay {
+    display: none;
+    text-align: center;
+    padding: 30px 0;
+}
+#loading-overlay.is-visible {
+    display: block;
+}
+#content {
+    display: none;
+}
+#content.is-visible {
+    display: block;
+}
+
 .spinner {
-    width: 40px; height: 40px;
+    width: 40px;
+    height: 40px;
     border: 4px solid rgba(0, 185, 0, 0.2);
-    border-top: 4px solid #00B900;
+    border-top: 4px solid var(--color-line);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 15px;
 }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .loading-text { color: #666; font-size: 15px; font-weight: 500; }
-
+.loading-text.is-error { color: var(--color-error); }

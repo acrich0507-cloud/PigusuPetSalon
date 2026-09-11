@@ -14,7 +14,7 @@
         <h2>會員資料維護</h2>
         
         <!-- 優化後的讀取畫面 -->
-        <div id="loading-overlay">
+        <div id="loading-overlay" class="is-visible">
             <div class="spinner"></div>
             <div class="loading-text">資料讀取中，請稍候...</div>
         </div>
@@ -227,13 +227,14 @@
             const lineName = getParamFromUrl('name');
             
             if (!uid) {
-                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text' style='color:red;'>無法取得系統授權碼，請從 LINE 重新進入</div>";
+                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>無法取得系統授權碼，請從 LINE 重新進入</div>";
+                document.getElementById('loading-overlay').classList.add('is-visible');
                 return;
             }
 
             document.getElementById('U_ID').value = uid;
             
-            document.getElementById('loading-overlay').style.display = 'block';
+            document.getElementById('loading-overlay').classList.add('is-visible');
             document.getElementById('memberForm').style.display = 'none';
 
             try {
@@ -270,7 +271,7 @@
                 document.getElementById('U_LineName').value = lineName || '';
                 document.getElementById('U_Name').value = lineName || '';
             } finally {
-                document.getElementById('loading-overlay').style.display = 'none';
+                document.getElementById('loading-overlay').classList.remove('is-visible');
                 document.getElementById('memberForm').style.display = 'block';
             }
         };

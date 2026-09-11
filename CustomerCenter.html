@@ -15,29 +15,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-    
-    <!-- 優化後的讀取畫面 -->
-    <div id="loading">
-        <div class="spinner"></div>
-        <div class="loading-text">正在讀取您的 LINE 資訊...</div>
-    </div>
-    
-    <div id="content">
-        <h2>專屬會員卡</h2>
-        <h3 id="name-display"></h3>
-        
-        <!-- QR Code 加上專屬外框 -->
-        <div class="qrcode-wrapper">
-            <div id="qrcode"></div>
+    <div class="form-container">
+        <div id="loading-overlay" class="is-visible">
+            <div class="spinner"></div>
+            <div class="loading-text">正在讀取您的 LINE 資訊...</div>
         </div>
-        
-        <p id="uid-display" class="uid-text"></p>
-        
-        <hr>
-        
-        <button class="btn" onclick="goToPage('CustomerMaintain.html')">會員資料維護</button>
-        <button class="btn" onclick="goToPage('PetMaintain.html')">毛小孩資料維護</button>
-        <button class="btn btn-secondary" onclick="goToPage('BookingSelect.html')">預約記錄查詢</button>
+
+        <div id="content">
+            <h2>專屬會員卡</h2>
+            <p id="name-display" class="member-greeting"></p>
+
+            <div class="qrcode-wrapper">
+                <div id="qrcode"></div>
+            </div>
+
+            <p id="uid-display" class="uid-text"></p>
+
+            <hr class="section-divider">
+
+            <div class="action-stack">
+                <button type="button" class="btn" onclick="goToPage('CustomerMaintain.html')">會員資料維護</button>
+                <button type="button" class="btn" onclick="goToPage('PetMaintain.html')">毛小孩資料維護</button>
+                <button type="button" class="btn btn-secondary" onclick="goToPage('BookingSelect.html')">預約記錄查詢</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -58,7 +59,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('loading').innerHTML = "<div class='loading-text' style='color:red;'>LINE 系統載入失敗，請確認 LIFF ID 是否正確。</div>";
+                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>LINE 系統載入失敗，請確認 LIFF ID 是否正確。</div>";
             }
         }
 
@@ -68,8 +69,8 @@
                 const result = await response.json();
 
                 if (result.exists === true) {
-                    document.getElementById('loading').style.display = 'none';
-                    document.getElementById('content').style.display = 'block';
+                    document.getElementById('loading-overlay').classList.remove('is-visible');
+                    document.getElementById('content').classList.add('is-visible');
                     document.getElementById('name-display').innerText = `${currentName} 您好！`;
                     document.getElementById('uid-display').innerText = `UID: ${uid}`;
                     
@@ -88,7 +89,7 @@
                 }
             } catch (err) {
                 console.error("API 呼叫失敗", err);
-                document.getElementById('loading').innerHTML = "<div class='loading-text' style='color:red;'>系統連線異常，請稍後再試。</div>";
+                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>系統連線異常，請稍後再試。</div>";
             }
         }
 
