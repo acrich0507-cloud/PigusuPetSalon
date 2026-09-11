@@ -39,11 +39,15 @@
                 <button type="button" class="btn btn-secondary" onclick="goToPage('BookingSelect.html')">預約記錄查詢</button>
             </div>
         </div>
+
+        <p id="app-version" class="app-version"></p>
     </div>
 
     <script>
         let currentUid = ""; 
         let currentName = "";
+
+        document.getElementById('app-version').textContent = `v${CONFIG.APP_VERSION}`;
 
         async function initApp() {
             try {

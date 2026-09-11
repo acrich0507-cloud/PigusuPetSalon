@@ -217,3 +217,11 @@ select.form-control {
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 .loading-text { color: #666; font-size: 15px; font-weight: 500; }
 .loading-text.is-error { color: var(--color-error); }
+
+.app-version {
+    text-align: center;
+    color: #9aa3ad;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    margin: 20px 0 0;
+}
