@@ -8,9 +8,9 @@
     --color-border: #e4e7eb;
     --color-border-soft: #eef2f6;
     --color-input-bg: #fbfcfd;
-    --color-line: #00B900;
-    --color-line-start: #00C300;
-    --color-line-end: #00A000;
+    --color-line: #1F6B4D;
+    --color-line-start: #2F8562;
+    --color-line-end: #14503A;
     --color-disabled: #cbd5e1;
     --color-error: #ff4d4f;
     --radius-card: 16px;
@@ -76,7 +76,7 @@ h2 {
     border-color: var(--color-line);
     background-color: var(--color-card);
     outline: none;
-    box-shadow: 0 0 0 4px rgba(0, 185, 0, 0.1);
+    box-shadow: 0 0 0 4px rgba(31, 107, 77, 0.12);
 }
 .form-control::placeholder { color: var(--color-placeholder); }
 textarea.form-control { resize: vertical; min-height: 90px; }
@@ -166,12 +166,12 @@ select.form-control {
     font-weight: bold;
     cursor: pointer;
     margin-top: 15px;
-    box-shadow: 0 4px 12px rgba(0, 185, 0, 0.25);
+    box-shadow: 0 4px 12px rgba(20, 80, 58, 0.25);
     transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
 }
 .btn:active {
     transform: scale(0.98);
-    box-shadow: 0 2px 6px rgba(0, 185, 0, 0.15);
+    box-shadow: 0 2px 6px rgba(20, 80, 58, 0.18);
 }
 .btn:disabled {
     background: var(--color-disabled);
@@ -186,7 +186,7 @@ select.form-control {
     box-shadow: none;
 }
 .btn-secondary:active {
-    background: #f6fff6;
+    background: #f2f8f5;
     box-shadow: none;
 }
 
@@ -208,7 +208,7 @@ select.form-control {
 .spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid rgba(0, 185, 0, 0.2);
+    border: 4px solid rgba(31, 107, 77, 0.2);
     border-top: 4px solid var(--color-line);
     border-radius: 50%;
     animation: spin 1s linear infinite;
