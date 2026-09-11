@@ -4,21 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>毛孩美容會員中心</title>
-    
-    <!-- 引入共用設定檔 -->
     <script src="config.js"></script>
-    
-    <!-- 引入共用外觀樣式檔 -->
     <link rel="stylesheet" href="style.css">
-    
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
 </head>
 <body>
     <div class="form-container">
         <div id="loading-overlay" class="is-visible">
             <div class="spinner"></div>
-            <div class="loading-text">正在讀取您的 LINE 資訊...</div>
+            <div id="loading-text" class="loading-text">正在啟動...</div>
         </div>
 
         <div id="content">
@@ -44,68 +38,235 @@
     </div>
 
     <script>
-        let currentUid = ""; 
-        let currentName = "";
+        const MEMBER_CACHE_KEY = 'pps_member_exists';
+        const MEMBER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 分鐘內略過 GAS 查詢
+
+        let currentUid = '';
+        let currentName = '';
+        let qrcodeReady = null;
 
         document.getElementById('app-version').textContent = `v${CONFIG.APP_VERSION}`;
 
-        async function initApp() {
+        function setLoadingText(text) {
+            const el = document.getElementById('loading-text');
+            if (el) el.textContent = text;
+        }
+
+        function showError(message) {
+            document.getElementById('loading-overlay').innerHTML =
+                `<div class="loading-text is-error">${message}</div>`;
+        }
+
+        function readMemberCache(uid) {
             try {
-                await liff.init({ liffId: CONFIG.LIFF_ID });
-                
-                if (liff.isLoggedIn()) {
-                    const profile = await liff.getProfile();
-                    currentUid = profile.userId; 
-                    currentName = profile.displayName; 
-                    checkUserExists(currentUid);
-                } else {
-                    liff.login();
-                }
+                const raw = sessionStorage.getItem(MEMBER_CACHE_KEY);
+                if (!raw) return null;
+                const cached = JSON.parse(raw);
+                if (!cached || cached.uid !== uid) return null;
+                if (Date.now() - cached.at > MEMBER_CACHE_TTL_MS) return null;
+                return cached.exists === true;
             } catch (err) {
-                console.error(err);
-                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>LINE 系統載入失敗，請確認 LIFF ID 是否正確。</div>";
+                return null;
             }
         }
 
-        async function checkUserExists(uid) {
+        function writeMemberCache(uid, exists) {
             try {
-                const response = await fetch(`${CONFIG.GAS_API_URL}?action=checkUser&uid=${uid}`);
-                const result = await response.json();
-
-                if (result.exists === true) {
-                    document.getElementById('loading-overlay').classList.remove('is-visible');
-                    document.getElementById('content').classList.add('is-visible');
-                    document.getElementById('name-display').innerText = `${currentName} 您好！`;
-                    document.getElementById('uid-display').innerText = `UID: ${uid}`;
-                    
-                    // 產生 QR Code
-                    document.getElementById("qrcode").innerHTML = ""; 
-                    new QRCode(document.getElementById("qrcode"), {
-                        text: uid,
-                        width: 150,
-                        height: 150,
-                        colorDark : "#222222",
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                    });
-                } else {
-                    window.location.replace(`CustomerMaintain.html?uid=${uid}&name=${encodeURIComponent(currentName)}`);
-                }
+                sessionStorage.setItem(MEMBER_CACHE_KEY, JSON.stringify({
+                    uid: uid,
+                    exists: exists,
+                    at: Date.now()
+                }));
             } catch (err) {
-                console.error("API 呼叫失敗", err);
-                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>系統連線異常，請稍後再試。</div>";
+                // sessionStorage 不可用時略過快取
+            }
+        }
+
+        function clearMemberCache() {
+            try {
+                sessionStorage.removeItem(MEMBER_CACHE_KEY);
+            } catch (err) {
+                // ignore
+            }
+        }
+
+        function loadQrcodeLib() {
+            if (window.QRCode) return Promise.resolve();
+            if (qrcodeReady) return qrcodeReady;
+
+            qrcodeReady = new Promise(function (resolve, reject) {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+                script.onload = resolve;
+                script.onerror = function () {
+                    reject(new Error('QRCode 套件載入失敗'));
+                };
+                document.head.appendChild(script);
+            });
+
+            return qrcodeReady;
+        }
+
+        function renderMemberCard(uid, name) {
+            document.getElementById('loading-overlay').classList.remove('is-visible');
+            document.getElementById('content').classList.add('is-visible');
+            document.getElementById('name-display').innerText = `${name} 您好！`;
+            document.getElementById('uid-display').innerText = `UID: ${uid}`;
+
+            // QR 與畫面分開：先讓使用者看到會員卡，再補 QR
+            loadQrcodeLib().then(function () {
+                const box = document.getElementById('qrcode');
+                box.innerHTML = '';
+                new QRCode(box, {
+                    text: uid,
+                    width: 150,
+                    height: 150,
+                    colorDark: '#222222',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }).catch(function (err) {
+                console.error(err);
+            });
+        }
+
+        function redirectToMaintain(uid, name) {
+            window.location.replace(
+                `CustomerMaintain.html?uid=${encodeURIComponent(uid)}&name=${encodeURIComponent(name)}`
+            );
+        }
+
+        // 優先用 ID Token / Context，避免多餘的 getProfile 網路請求
+        async function resolveLineIdentity() {
+            const token = typeof liff.getDecodedIDToken === 'function'
+                ? liff.getDecodedIDToken()
+                : null;
+
+            if (token && token.sub) {
+                return {
+                    uid: token.sub,
+                    name: token.name || currentName || ''
+                };
+            }
+
+            const context = typeof liff.getContext === 'function' ? liff.getContext() : null;
+            if (context && context.userId) {
+                let name = currentName || '';
+                try {
+                    const profile = await liff.getProfile();
+                    name = profile.displayName || name;
+                } catch (err) {
+                    // 有 uid 就先繼續，名稱可稍後再補
+                }
+                return { uid: context.userId, name: name };
+            }
+
+            const profile = await liff.getProfile();
+            return {
+                uid: profile.userId,
+                name: profile.displayName || ''
+            };
+        }
+
+        async function checkUserExists(uid, options) {
+            const opts = options || {};
+            const response = await fetch(
+                `${CONFIG.GAS_API_URL}?action=checkUser&uid=${encodeURIComponent(uid)}`
+            );
+            const result = await response.json();
+            const exists = result.exists === true;
+
+            // 只快取「已是會員」；未註冊不要快取，避免剛註冊完被舊快取導回維護頁
+            if (exists) {
+                writeMemberCache(uid, true);
+                if (!opts.silent) {
+                    renderMemberCard(uid, currentName);
+                }
+            } else {
+                clearMemberCache();
+                if (!opts.silent) {
+                    redirectToMaintain(uid, currentName);
+                }
+            }
+
+            return exists;
+        }
+
+        async function initApp() {
+            try {
+                setLoadingText('正在連接 LINE...');
+                await liff.init({ liffId: CONFIG.LIFF_ID });
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                setLoadingText('正在讀取會員身分...');
+                const identity = await resolveLineIdentity();
+                currentUid = identity.uid;
+                currentName = identity.name || '';
+
+                if (!currentUid) {
+                    showError('無法取得 LINE 身分，請重新進入。');
+                    return;
+                }
+
+                const cachedExists = readMemberCache(currentUid);
+                if (cachedExists === true) {
+                    // 快取命中：立刻顯示，背景再確認一次
+                    renderMemberCard(currentUid, currentName);
+                    checkUserExists(currentUid, { silent: true }).then(function (exists) {
+                        if (exists === false) {
+                            redirectToMaintain(currentUid, currentName);
+                        }
+                    }).catch(function (err) {
+                        console.error('背景驗證失敗', err);
+                    });
+                    return;
+                }
+
+                setLoadingText('正在確認會員資料...');
+                await checkUserExists(currentUid);
+            } catch (err) {
+                console.error(err);
+                showError('LINE 系統載入失敗，請確認 LIFF ID 是否正確。');
             }
         }
 
         function goToPage(pageName) {
             if (!currentUid) {
-                alert("尚未取得您的會員資料，請稍後再試！");
+                alert('尚未取得您的會員資料，請稍後再試！');
                 return;
             }
-            window.location.href = `${pageName}?uid=${currentUid}&name=${encodeURIComponent(currentName)}`;
+            window.location.href =
+                `${pageName}?uid=${encodeURIComponent(currentUid)}&name=${encodeURIComponent(currentName)}`;
         }
 
-        initApp();
+        // LIFF 使用 defer，等載入完成再 init
+        if (window.liff) {
+            initApp();
+        } else {
+            window.addEventListener('DOMContentLoaded', function () {
+                if (window.liff) {
+                    initApp();
+                } else {
+                    // defer 腳本可能比 DOMContentLoaded 晚一點
+                    const timer = setInterval(function () {
+                        if (window.liff) {
+                            clearInterval(timer);
+                            initApp();
+                        }
+                    }, 20);
+                    setTimeout(function () {
+                        clearInterval(timer);
+                        if (!window.liff) {
+                            showError('LINE SDK 載入失敗，請稍後再試。');
+                        }
+                    }, 8000);
+                }
+            });
+        }
     </script>
 </body>
 </html>
