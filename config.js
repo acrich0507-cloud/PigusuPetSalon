@@ -4,4 +4,5 @@ const CONFIG = {
     
     // 你的 LINE LIFF ID (建議一併抽離，因為首頁跟其他頁面可能都會用到)
     LIFF_ID: "2011433016-ReLRLT5q" 
+    
 };
