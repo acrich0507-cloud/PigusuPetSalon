@@ -225,3 +225,61 @@ select.form-control {
     letter-spacing: 0.4px;
     margin: 20px 0 0;
 }
+
+.field-hint {
+    font-weight: 400;
+    color: var(--color-placeholder);
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+.modal-overlay.is-visible {
+    display: flex;
+}
+.modal-card {
+    background: var(--color-card);
+    border-radius: var(--radius-card);
+    padding: 32px 28px;
+    max-width: 340px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    animation: modal-pop 0.25s ease;
+}
+@keyframes modal-pop {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.modal-icon-success {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: rgba(31, 107, 77, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.modal-icon-success svg { width: 28px; height: 28px; }
+.modal-title {
+    margin: 0 0 8px;
+    font-size: 19px;
+    color: var(--color-heading);
+    font-weight: 700;
+}
+.modal-message {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}

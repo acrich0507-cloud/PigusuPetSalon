@@ -30,8 +30,8 @@
             </div>
 
             <div class="form-group">
-                <label for="U_Six">性別</label>
-                <select id="U_Six" class="form-control">
+                <label for="U_Six">性別<span class="required-star">*</span></label>
+                <select id="U_Six" class="form-control" required>
                     <option value="">請選擇</option>
                     <option value="男">男</option>
                     <option value="女">女</option>
@@ -63,18 +63,8 @@
             </div>
 
             <div class="form-group">
-                <label>生日</label>
-                <div class="flex-group">
-                    <select id="U_BirthYear" class="form-control" style="flex: 2;">
-                        <option value="">年份</option>
-                    </select>
-                    <select id="U_BirthMonth" class="form-control" style="flex: 1;">
-                        <option value="">月份</option>
-                    </select>
-                    <select id="U_BirthDay" class="form-control" style="flex: 1;">
-                        <option value="">日期</option>
-                    </select>
-                </div>
+                <label for="U_Birth">生日<span class="field-hint">（不定時推出生日優惠活動）</span></label>
+                <input type="date" id="U_Birth" class="form-control">
             </div>
 
             <div class="form-group">
@@ -89,8 +79,20 @@
                 </label>
             </div>
 
-            <button type="button" class="btn" id="submitBtn" onclick="submitForm()">儲存資料</button>
+            <button type="button" class="btn" id="submitBtn" onclick="submitForm()" disabled>儲存資料</button>
         </form>
+    </div>
+
+    <div id="successModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-icon-success">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1F6B4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3 class="modal-title">儲存成功</h3>
+            <p class="modal-message">您的會員資料已更新完成，即將為您返回會員中心。</p>
+        </div>
     </div>
 
     <script>
@@ -146,34 +148,6 @@
             }
         }
 
-        function initDateDropdowns() {
-            const yearSelect = document.getElementById('U_BirthYear');
-            const monthSelect = document.getElementById('U_BirthMonth');
-            const daySelect = document.getElementById('U_BirthDay');
-            
-            const currentYear = new Date().getFullYear();
-            for (let i = currentYear; i >= 1930; i--) {
-                let option = document.createElement("option");
-                option.value = i;
-                option.text = i + '年';
-                yearSelect.appendChild(option);
-            }
-            for (let i = 1; i <= 12; i++) {
-                let m = i < 10 ? '0' + i : i;
-                let option = document.createElement("option");
-                option.value = m;
-                option.text = m + '月';
-                monthSelect.appendChild(option);
-            }
-            for (let i = 1; i <= 31; i++) {
-                let d = i < 10 ? '0' + i : i;
-                let option = document.createElement("option");
-                option.value = d;
-                option.text = d + '日';
-                daySelect.appendChild(option);
-            }
-        }
-
         function parseAndSetAddress(fullAddress) {
             if (!fullAddress) return;
 
@@ -222,7 +196,12 @@
 
         window.onload = async function() {
             initCityDropdown();
-            initDateDropdowns(); 
+
+            ['U_Name', 'U_Phone', 'U_Six'].forEach(function(id) {
+                const el = document.getElementById(id);
+                el.addEventListener('input', validateRequiredFields);
+                el.addEventListener('change', validateRequiredFields);
+            });
 
             const uid = getParamFromUrl('uid');
             const lineName = getParamFromUrl('name');
@@ -253,12 +232,7 @@
                     parseAndSetAddress(dbData.U_Addr);
                     
                     if (dbData.U_BirthDay) {
-                        const parts = dbData.U_BirthDay.split('-');
-                        if (parts.length >= 3) {
-                            document.getElementById('U_BirthYear').value = parts[0];
-                            document.getElementById('U_BirthMonth').value = parts[1];
-                            document.getElementById('U_BirthDay').value = parts[2].substring(0, 2); 
-                        }
+                        document.getElementById('U_Birth').value = dbData.U_BirthDay.substring(0, 10);
                     }
                     
                     document.getElementById('U_Memo').value = dbData.U_Memo || '';
@@ -282,8 +256,18 @@
             } finally {
                 document.getElementById('loading-overlay').classList.remove('is-visible');
                 document.getElementById('memberForm').style.display = 'block';
+                validateRequiredFields();
             }
         };
+
+        function validateRequiredFields() {
+            const name = document.getElementById('U_Name').value.trim();
+            const phone = document.getElementById('U_Phone').value.trim();
+            const six = document.getElementById('U_Six').value;
+            const isValid = !!(name && phone && six);
+            document.getElementById('submitBtn').disabled = !isValid;
+            return isValid;
+        }
 
         async function submitForm() {
             const uid = document.getElementById('U_ID').value;
@@ -303,16 +287,10 @@
                 fullAddr = city + district + street;
             }
             
-            const bYear = document.getElementById('U_BirthYear').value;
-            const bMonth = document.getElementById('U_BirthMonth').value;
-            const bDay = document.getElementById('U_BirthDay').value;
-            let birthday = "";
-            if (bYear && bMonth && bDay) {
-                birthday = `${bYear}-${bMonth}-${bDay}`;
-            }
-            
-            if (!uid || !name || !phone) {
-                alert("請確認「真實姓名」與「手機號碼」皆已填寫！");
+            const birthday = document.getElementById('U_Birth').value;
+
+            if (!uid || !name || !phone || !six) {
+                alert("請確認「姓名」、「手機號碼」與「性別」皆已填寫！");
                 return;
             }
 
@@ -346,8 +324,10 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('資料儲存成功！將為您跳轉回會員中心。');
-                    window.location.replace('CustomerCenter.html'); 
+                    document.getElementById('successModal').classList.add('is-visible');
+                    setTimeout(function() {
+                        window.location.replace('CustomerCenter.html');
+                    }, 1500);
                 } else {
                     alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
                     btn.innerText = '儲存資料';
