@@ -246,6 +246,10 @@ select.form-control {
     font-size: 12px;
     margin-left: 6px;
 }
+.field-hint-block {
+    display: block;
+    margin: 6px 2px 0;
+}
 
 .pet-list {
     display: flex;
