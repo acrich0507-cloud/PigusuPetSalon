@@ -81,6 +81,14 @@ h2 {
 .form-control::placeholder { color: var(--color-placeholder); }
 textarea.form-control { resize: vertical; min-height: 90px; }
 
+input[type="date"].form-control {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
 select.form-control {
     appearance: none;
     -webkit-appearance: none;
