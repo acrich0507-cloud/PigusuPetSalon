@@ -39,14 +39,16 @@
 
             <div class="form-group">
                 <label for="P_Type">寵物類型</label>
-                <select id="P_Type" class="form-control">
+                <select id="P_Type" class="form-control" onchange="handlePetTypeChange()">
                     <option value="">請選擇</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="P_Breeds">寵物品種</label>
-                <input type="text" id="P_Breeds" class="form-control" placeholder="例如：柴犬、米克斯">
+                <select id="P_Breeds" class="form-control">
+                    <option value="">請先選擇寵物類型</option>
+                </select>
             </div>
 
             <div class="form-group">
@@ -114,6 +116,9 @@
         // 寵物類型代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Type'）
         // 介面顯示 Code_Desc，資料庫實際存 Code
         let petTypeOptions = [];
+        // 寵物品種代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Breeds'，以寵物類型代碼為前綴篩選）
+        // 結構：{ 類型代碼: { 品種代碼: 品種說明, ... }, ... }
+        let breedDescCacheByType = {};
 
         function getParamFromUrl(paramName) {
             const params = new URLSearchParams(window.location.search);
@@ -177,6 +182,72 @@
             }
         }
 
+        // 依「寵物類型」代碼，讀取（並快取）該類型底下的品種代碼對應表 (Basic_Data: TB_Name='Pet', Cul_Name='P_Breeds', code第一碼=類型代碼)
+        async function ensureBreedDescLoaded(typeCode) {
+            if (!typeCode || breedDescCacheByType[typeCode]) {
+                return;
+            }
+            try {
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Breeds&codePrefix=${encodeURIComponent(typeCode)}`);
+                const result = await response.json();
+
+                const map = {};
+                if (result.success && Array.isArray(result.data)) {
+                    result.data.forEach(function(opt) { map[opt.Code] = opt.Code_Desc || opt.Code; });
+                } else {
+                    console.error('讀取寵物品種代碼失敗:', result.error);
+                }
+                breedDescCacheByType[typeCode] = map;
+            } catch (error) {
+                console.error('讀取寵物品種代碼時發生網路錯誤:', error);
+                breedDescCacheByType[typeCode] = {};
+            }
+        }
+
+        // 依代碼對應表，將 P_Breeds 存的 Code 轉成畫面顯示用的 Code_Desc
+        function getBreedDesc(typeCode, breedCode) {
+            if (!breedCode) {
+                return '';
+            }
+            const map = breedDescCacheByType[typeCode] || {};
+            return map[breedCode] || breedCode;
+        }
+
+        // 依選定的寵物類型，重新產生「寵物品種」下拉選項；selectedBreedCode 用於編輯既有寵物時帶回原本的選擇
+        async function populateBreedSelect(typeCode, selectedBreedCode) {
+            const select = document.getElementById('P_Breeds');
+
+            if (!typeCode) {
+                select.innerHTML = '<option value="">請先選擇寵物類型</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="">請選擇</option>';
+            await ensureBreedDescLoaded(typeCode);
+
+            const map = breedDescCacheByType[typeCode] || {};
+            Object.keys(map).sort().forEach(function(code) {
+                const optionEl = document.createElement('option');
+                optionEl.value = code;
+                optionEl.textContent = map[code];
+                select.appendChild(optionEl);
+            });
+
+            select.value = selectedBreedCode || '';
+        }
+
+        // 使用者切換「寵物類型」時，品種選項需重新載入且清空原本選擇（避免帶著舊類型的品種代碼）
+        async function handlePetTypeChange() {
+            const typeCode = document.getElementById('P_Type').value;
+            await populateBreedSelect(typeCode, '');
+        }
+
+        // 預先載入清單中所有毛小孩「所屬類型」的品種對應表，讓清單卡片能正確顯示品種名稱
+        async function preloadBreedDescForList() {
+            const typeCodes = Array.from(new Set(petListCache.map(function(p) { return p.P_Type; }).filter(Boolean)));
+            await Promise.all(typeCodes.map(function(code) { return ensureBreedDescLoaded(code); }));
+        }
+
         function showListView() {
             document.getElementById('petForm').style.display = 'none';
             document.getElementById('petListView').style.display = 'block';
@@ -195,7 +266,7 @@
             document.getElementById('P_ID').value = '';
             document.getElementById('P_Name').value = '';
             document.getElementById('P_Type').value = '';
-            document.getElementById('P_Breeds').value = '';
+            document.getElementById('P_Breeds').innerHTML = '<option value="">請先選擇寵物類型</option>';
             document.getElementById('P_Sex').value = '';
             document.getElementById('P_Birthday').value = '';
             document.getElementById('P_Weight').value = '';
@@ -219,7 +290,6 @@
             document.getElementById('P_ID').value = pet.P_ID || '';
             document.getElementById('P_Name').value = pet.P_Name || '';
             document.getElementById('P_Type').value = pet.P_Type || '';
-            document.getElementById('P_Breeds').value = pet.P_Breeds || '';
             document.getElementById('P_Sex').value = pet.P_Sex || '';
             document.getElementById('P_Weight').value = (pet.P_Weight !== null && pet.P_Weight !== undefined) ? pet.P_Weight : '';
             document.getElementById('P_Size').value = pet.P_Size || '';
@@ -227,8 +297,10 @@
             document.getElementById('P_Memo').value = pet.P_Memo || '';
             document.getElementById('P_Birthday').value = pet.P_Birthday ? pet.P_Birthday.substring(0, 10) : '';
 
-            validateRequiredFields();
-            showFormView();
+            populateBreedSelect(pet.P_Type, pet.P_Breeds).then(function() {
+                validateRequiredFields();
+                showFormView();
+            });
         }
 
         function renderPetList() {
@@ -245,7 +317,7 @@
                 card.className = 'pet-card';
                 card.onclick = function() { editPet(pet.P_ID); };
 
-                const subText = [getPetTypeDesc(pet.P_Type), pet.P_Breeds].filter(Boolean).join(' ‧ ') || '尚未填寫類型/品種';
+                const subText = [getPetTypeDesc(pet.P_Type), getBreedDesc(pet.P_Type, pet.P_Breeds)].filter(Boolean).join(' ‧ ') || '尚未填寫類型/品種';
 
                 card.innerHTML =
                     '<div class="pet-card-info">' +
@@ -280,6 +352,8 @@
                     alert('讀取毛小孩資料時發生問題：\n' + (result.error || '未知錯誤'));
                     petListCache = [];
                 }
+
+                await preloadBreedDescForList();
             } catch (error) {
                 console.error("資料讀取失敗:", error);
                 const isTimeout = error.name === 'AbortError';
