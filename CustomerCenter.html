@@ -177,6 +177,13 @@
                 `${CONFIG.GAS_API_URL}?action=checkUser&uid=${encodeURIComponent(uid)}`
             );
             const result = await response.json();
+
+            // 後端真正發生錯誤時 (例如金鑰/資料庫問題)，不能當成「查無此人」處理，
+            // 否則既有會員會被誤導去註冊頁面
+            if (result.success === false) {
+                throw new Error(result.error || '查詢會員資料失敗');
+            }
+
             const exists = result.exists === true;
 
             // 只快取「已是會員」；未註冊不要快取，避免剛註冊完被舊快取導回維護頁

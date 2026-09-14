@@ -263,9 +263,17 @@
                     
                     document.getElementById('U_Memo').value = dbData.U_Memo || '';
                     document.getElementById('U_Marketing').checked = dbData.U_Marketing !== false; 
-                } else {
+                } else if (result.success) {
+                    // 查無資料，是尚未建檔的新會員，屬正常情況
                     document.getElementById('U_LineName').value = lineName || '';
                     document.getElementById('U_Name').value = lineName || '';
+                } else {
+                    // 後端真正發生錯誤 (例如金鑰/資料庫問題)，不能悄悄當成新會員處理，
+                    // 否則既有會員的資料會被誤以為不存在
+                    console.error('讀取會員資料失敗:', result.error);
+                    document.getElementById('U_LineName').value = lineName || '';
+                    document.getElementById('U_Name').value = lineName || '';
+                    alert('讀取會員資料時發生問題，部分欄位可能未帶入：\n' + (result.error || '未知錯誤'));
                 }
             } catch (error) {
                 console.error("資料讀取失敗:", error);
