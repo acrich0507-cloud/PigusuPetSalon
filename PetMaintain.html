@@ -72,13 +72,9 @@
                         <input type="number" id="P_Weight" class="form-control" step="0.1" min="0" placeholder="例如：5.2">
                     </div>
                     <div style="flex: 1;">
-                        <label for="P_Size">體型</label>
-                        <select id="P_Size" class="form-control">
-                            <option value="">請選擇</option>
-                            <option value="小型">小型</option>
-                            <option value="中型">中型</option>
-                            <option value="大型">大型</option>
-                        </select>
+                        <label for="P_Size_Display">體型<span class="field-hint">（依體重自動判定）</span></label>
+                        <input type="text" id="P_Size_Display" class="form-control" readonly placeholder="請先輸入體重">
+                        <input type="hidden" id="P_Size">
                     </div>
                 </div>
             </div>
@@ -119,6 +115,9 @@
         // 寵物品種代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Breeds'，以寵物類型代碼為前綴篩選）
         // 結構：{ 類型代碼: { 品種代碼: 品種說明, ... }, ... }
         let breedDescCacheByType = {};
+        // 體型代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Size', Flag=TRUE）
+        // 體型不再由使用者選擇，改為依體重由系統自動換算
+        let petSizeOptions = [];
 
         function getParamFromUrl(paramName) {
             const params = new URLSearchParams(window.location.search);
@@ -248,6 +247,61 @@
             await Promise.all(typeCodes.map(function(code) { return ensureBreedDescLoaded(code); }));
         }
 
+        // 依體重換算體型代碼：<=4kg→1，4~10kg→2，10~25kg→3，>=25kg→4
+        function calcPetSizeCode(weight) {
+            if (weight === null || weight === undefined || isNaN(weight)) {
+                return '';
+            }
+            if (weight <= 4) {
+                return '1';
+            }
+            if (weight <= 10) {
+                return '2';
+            }
+            if (weight < 25) {
+                return '3';
+            }
+            return '4';
+        }
+
+        // 依代碼對應表，將 P_Size 存的 Code 轉成畫面顯示用的 Code_Desc
+        function getPetSizeDesc(code) {
+            if (!code) {
+                return '';
+            }
+            const found = petSizeOptions.find(function(opt) { return opt.Code === code; });
+            return found ? (found.Code_Desc || found.Code) : code;
+        }
+
+        // 讀取「體型」代碼對應檔 (Basic_Data: TB_Name='Pet', Cul_Name='P_Size', Flag=TRUE)
+        async function loadPetSizeOptions() {
+            try {
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Size&onlyEnabled=true`);
+                const result = await response.json();
+
+                if (result.success) {
+                    petSizeOptions = Array.isArray(result.data) ? result.data : [];
+                } else {
+                    console.error('讀取寵物體型代碼失敗:', result.error);
+                    petSizeOptions = [];
+                }
+            } catch (error) {
+                console.error('讀取寵物體型代碼時發生網路錯誤:', error);
+                petSizeOptions = [];
+            } finally {
+                recalcPetSize();
+            }
+        }
+
+        // 依目前「體重」欄位的值，重新計算並顯示「體型」(隱藏欄位存 Code，顯示欄位顯示 Code_Desc)
+        function recalcPetSize() {
+            const weightRaw = document.getElementById('P_Weight').value;
+            const weight = weightRaw !== '' ? parseFloat(weightRaw) : null;
+            const code = calcPetSizeCode(weight);
+            document.getElementById('P_Size').value = code;
+            document.getElementById('P_Size_Display').value = code ? getPetSizeDesc(code) : '';
+        }
+
         function showListView() {
             document.getElementById('petForm').style.display = 'none';
             document.getElementById('petListView').style.display = 'block';
@@ -270,9 +324,9 @@
             document.getElementById('P_Sex').value = '';
             document.getElementById('P_Birthday').value = '';
             document.getElementById('P_Weight').value = '';
-            document.getElementById('P_Size').value = '';
             document.getElementById('P_IC').value = '';
             document.getElementById('P_Memo').value = '';
+            recalcPetSize();
         }
 
         function addNewPet() {
@@ -292,10 +346,10 @@
             document.getElementById('P_Type').value = pet.P_Type || '';
             document.getElementById('P_Sex').value = pet.P_Sex || '';
             document.getElementById('P_Weight').value = (pet.P_Weight !== null && pet.P_Weight !== undefined) ? pet.P_Weight : '';
-            document.getElementById('P_Size').value = pet.P_Size || '';
             document.getElementById('P_IC').value = pet.P_IC || '';
             document.getElementById('P_Memo').value = pet.P_Memo || '';
             document.getElementById('P_Birthday').value = pet.P_Birthday ? pet.P_Birthday.substring(0, 10) : '';
+            recalcPetSize();
 
             populateBreedSelect(pet.P_Type, pet.P_Breeds).then(function() {
                 validateRequiredFields();
@@ -370,6 +424,8 @@
         window.onload = async function() {
             document.getElementById('P_Name').addEventListener('input', validateRequiredFields);
             document.getElementById('P_Name').addEventListener('change', validateRequiredFields);
+            document.getElementById('P_Weight').addEventListener('input', recalcPetSize);
+            document.getElementById('P_Weight').addEventListener('change', recalcPetSize);
 
             const uid = getParamFromUrl('uid');
 
@@ -381,7 +437,7 @@
 
             document.getElementById('U_ID').value = uid;
 
-            await loadPetTypeOptions();
+            await Promise.all([loadPetTypeOptions(), loadPetSizeOptions()]);
             await loadPetList();
         };
 
