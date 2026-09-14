@@ -217,8 +217,12 @@
             document.getElementById('loading-overlay').classList.add('is-visible');
             document.getElementById('memberForm').style.display = 'none';
 
+            // 逾時保護：後端(GAS 冷啟動 / Supabase 喚醒)偶爾會回應緩慢，避免使用者無限等待
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
             try {
-                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getUserData&uid=${uid}`);
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getUserData&uid=${uid}`, { signal: controller.signal });
                 const result = await response.json();
 
                 if (result.success && result.data) {
@@ -253,7 +257,10 @@
                 console.error("資料讀取失敗:", error);
                 document.getElementById('U_LineName').value = lineName || '';
                 document.getElementById('U_Name').value = lineName || '';
+                const isTimeout = error.name === 'AbortError';
+                alert((isTimeout ? '讀取會員資料逾時（伺服器回應過久），' : '讀取會員資料時發生網路錯誤，') + '部分欄位可能未帶入，請確認網路狀況後重新整理再試一次。');
             } finally {
+                clearTimeout(timeoutId);
                 document.getElementById('loading-overlay').classList.remove('is-visible');
                 document.getElementById('memberForm').style.display = 'block';
                 validateRequiredFields();
