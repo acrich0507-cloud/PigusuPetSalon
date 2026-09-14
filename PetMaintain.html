@@ -281,6 +281,10 @@
 
                 if (result.success) {
                     petSizeOptions = Array.isArray(result.data) ? result.data : [];
+                    if (petSizeOptions.length === 0) {
+                        // 查無代碼資料，體型欄位會退回顯示原始代碼數字；請確認 Basic_Data 是否已建立對應資料且 Flag=TRUE
+                        console.warn('Basic_Data 查無 TB_Name=Pet, Cul_Name=P_Size, Flag=TRUE 的資料，體型將只顯示代碼數字。');
+                    }
                 } else {
                     console.error('讀取寵物體型代碼失敗:', result.error);
                     petSizeOptions = [];
