@@ -41,9 +41,6 @@
                 <label for="P_Type">寵物類型</label>
                 <select id="P_Type" class="form-control">
                     <option value="">請選擇</option>
-                    <option value="狗">狗</option>
-                    <option value="貓">貓</option>
-                    <option value="其他">其他</option>
                 </select>
             </div>
 
@@ -114,6 +111,9 @@
     <script>
         // 目前該會員名下的寵物清單快取（前端記憶體，切換編輯畫面時直接取用，不用每次都打 API）
         let petListCache = [];
+        // 寵物類型代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Type'）
+        // 介面顯示 Code_Desc，資料庫實際存 Code
+        let petTypeOptions = [];
 
         function getParamFromUrl(paramName) {
             const params = new URLSearchParams(window.location.search);
@@ -132,6 +132,49 @@
             const div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
             return div.innerHTML;
+        }
+
+        // 依代碼對應表，將 P_Type 存的 Code 轉成畫面顯示用的 Code_Desc
+        function getPetTypeDesc(code) {
+            if (!code) {
+                return '';
+            }
+            const found = petTypeOptions.find(function(opt) { return opt.Code === code; });
+            return found ? (found.Code_Desc || found.Code) : code;
+        }
+
+        // 依代碼對應表動態產生「寵物類型」下拉選項
+        function populatePetTypeSelect() {
+            const select = document.getElementById('P_Type');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">請選擇</option>';
+            petTypeOptions.forEach(function(opt) {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt.Code;
+                optionEl.textContent = opt.Code_Desc || opt.Code;
+                select.appendChild(optionEl);
+            });
+            select.value = currentValue;
+        }
+
+        // 讀取「寵物類型」代碼對應檔 (Basic_Data: TB_Name='Pet', Cul_Name='P_Type')
+        async function loadPetTypeOptions() {
+            try {
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Type`);
+                const result = await response.json();
+
+                if (result.success) {
+                    petTypeOptions = Array.isArray(result.data) ? result.data : [];
+                } else {
+                    console.error('讀取寵物類型代碼失敗:', result.error);
+                    petTypeOptions = [];
+                }
+            } catch (error) {
+                console.error('讀取寵物類型代碼時發生網路錯誤:', error);
+                petTypeOptions = [];
+            } finally {
+                populatePetTypeSelect();
+            }
         }
 
         function showListView() {
@@ -202,7 +245,7 @@
                 card.className = 'pet-card';
                 card.onclick = function() { editPet(pet.P_ID); };
 
-                const subText = [pet.P_Type, pet.P_Breeds].filter(Boolean).join(' ‧ ') || '尚未填寫類型/品種';
+                const subText = [getPetTypeDesc(pet.P_Type), pet.P_Breeds].filter(Boolean).join(' ‧ ') || '尚未填寫類型/品種';
 
                 card.innerHTML =
                     '<div class="pet-card-info">' +
@@ -264,6 +307,7 @@
 
             document.getElementById('U_ID').value = uid;
 
+            await loadPetTypeOptions();
             await loadPetList();
         };
 
