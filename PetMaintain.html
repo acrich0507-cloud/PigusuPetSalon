@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>毛小孩資料維護</title>
+    <link rel="preconnect" href="https://script.google.com">
+    <script src="config.js"></script>
+    <!-- 引入共用外觀樣式檔 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>毛小孩資料維護</h2>
+
+        <!-- 優化後的讀取畫面 -->
+        <div id="loading-overlay" class="is-visible">
+            <div class="spinner"></div>
+            <div class="loading-text">資料讀取中，請稍候...</div>
+        </div>
+
+        <!-- 寵物清單模式：顯示會員名下所有毛小孩，可新增或點選編輯 -->
+        <div id="petListView" style="display: none;">
+            <input type="hidden" id="U_ID">
+            <div id="petList" class="pet-list"></div>
+            <button type="button" class="btn" onclick="addNewPet()">+ 新增毛小孩</button>
+            <button type="button" class="btn btn-secondary" onclick="goBackToCenter()">返回會員中心</button>
+        </div>
+
+        <!-- 寵物編輯模式：新增或修改單一毛小孩的基本資料 -->
+        <form id="petForm" style="display: none;">
+            <input type="hidden" id="P_ID">
+
+            <div class="form-group">
+                <label for="P_Name">寵物名稱<span class="required-star">*</span></label>
+                <input type="text" id="P_Name" class="form-control" placeholder="請輸入寵物名稱" required>
+            </div>
+
+            <div class="form-group">
+                <label for="P_Type">寵物類型</label>
+                <select id="P_Type" class="form-control">
+                    <option value="">請選擇</option>
+                    <option value="狗">狗</option>
+                    <option value="貓">貓</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="P_Breeds">寵物品種</label>
+                <input type="text" id="P_Breeds" class="form-control" placeholder="例如：柴犬、米克斯">
+            </div>
+
+            <div class="form-group">
+                <label for="P_Sex">性別</label>
+                <select id="P_Sex" class="form-control">
+                    <option value="">請選擇</option>
+                    <option value="男生">男生</option>
+                    <option value="女生">女生</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="P_Birthday">寵物生日</label>
+                <input type="date" id="P_Birthday" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <div class="flex-group">
+                    <div style="flex: 1;">
+                        <label for="P_Weight">體重（kg）</label>
+                        <input type="number" id="P_Weight" class="form-control" step="0.1" min="0" placeholder="例如：5.2">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="P_Size">體型</label>
+                        <select id="P_Size" class="form-control">
+                            <option value="">請選擇</option>
+                            <option value="小型">小型</option>
+                            <option value="中型">中型</option>
+                            <option value="大型">大型</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="P_IC">寵物晶片號碼</label>
+                <input type="text" id="P_IC" class="form-control" placeholder="請輸入晶片號碼（選填）">
+            </div>
+
+            <div class="form-group">
+                <label for="P_Memo">飼主備註</label>
+                <textarea id="P_Memo" class="form-control" placeholder="有什麼想讓我們知道的嗎？（過敏、習慣...）"></textarea>
+            </div>
+
+            <button type="button" class="btn" id="submitBtn" onclick="submitForm()" disabled>儲存資料</button>
+            <button type="button" class="btn btn-secondary" onclick="showListView()">返回清單</button>
+        </form>
+    </div>
+
+    <div id="successModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-icon-success">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#1F6B4D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <h3 class="modal-title">儲存成功</h3>
+            <p class="modal-message" id="successModalMessage">毛小孩的資料已更新完成。</p>
+        </div>
+    </div>
+
+    <script>
+        // 目前該會員名下的寵物清單快取（前端記憶體，切換編輯畫面時直接取用，不用每次都打 API）
+        let petListCache = [];
+
+        function getParamFromUrl(paramName) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(paramName);
+        }
+
+        function validateRequiredFields() {
+            const name = document.getElementById('P_Name').value.trim();
+            const isValid = !!name;
+            document.getElementById('submitBtn').disabled = !isValid;
+            return isValid;
+        }
+
+        // 將任意文字安全地轉為可放進 innerHTML 的內容，避免寵物名稱/備註等使用者輸入造成 XSS
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str == null ? '' : String(str);
+            return div.innerHTML;
+        }
+
+        function showListView() {
+            document.getElementById('petForm').style.display = 'none';
+            document.getElementById('petListView').style.display = 'block';
+        }
+
+        function showFormView() {
+            document.getElementById('petListView').style.display = 'none';
+            document.getElementById('petForm').style.display = 'block';
+        }
+
+        function goBackToCenter() {
+            window.location.replace('CustomerCenter.html');
+        }
+
+        function resetForm() {
+            document.getElementById('P_ID').value = '';
+            document.getElementById('P_Name').value = '';
+            document.getElementById('P_Type').value = '';
+            document.getElementById('P_Breeds').value = '';
+            document.getElementById('P_Sex').value = '';
+            document.getElementById('P_Birthday').value = '';
+            document.getElementById('P_Weight').value = '';
+            document.getElementById('P_Size').value = '';
+            document.getElementById('P_IC').value = '';
+            document.getElementById('P_Memo').value = '';
+        }
+
+        function addNewPet() {
+            resetForm();
+            validateRequiredFields();
+            showFormView();
+        }
+
+        function editPet(petId) {
+            const pet = petListCache.find(function(p) { return p.P_ID === petId; });
+            if (!pet) {
+                return;
+            }
+
+            document.getElementById('P_ID').value = pet.P_ID || '';
+            document.getElementById('P_Name').value = pet.P_Name || '';
+            document.getElementById('P_Type').value = pet.P_Type || '';
+            document.getElementById('P_Breeds').value = pet.P_Breeds || '';
+            document.getElementById('P_Sex').value = pet.P_Sex || '';
+            document.getElementById('P_Weight').value = (pet.P_Weight !== null && pet.P_Weight !== undefined) ? pet.P_Weight : '';
+            document.getElementById('P_Size').value = pet.P_Size || '';
+            document.getElementById('P_IC').value = pet.P_IC || '';
+            document.getElementById('P_Memo').value = pet.P_Memo || '';
+            document.getElementById('P_Birthday').value = pet.P_Birthday ? pet.P_Birthday.substring(0, 10) : '';
+
+            validateRequiredFields();
+            showFormView();
+        }
+
+        function renderPetList() {
+            const container = document.getElementById('petList');
+            container.innerHTML = '';
+
+            if (petListCache.length === 0) {
+                container.innerHTML = '<div class="pet-list-empty">目前尚未建立任何毛小孩資料，點選下方按鈕新增第一隻吧！</div>';
+                return;
+            }
+
+            petListCache.forEach(function(pet) {
+                const card = document.createElement('div');
+                card.className = 'pet-card';
+                card.onclick = function() { editPet(pet.P_ID); };
+
+                const subText = [pet.P_Type, pet.P_Breeds].filter(Boolean).join(' ‧ ') || '尚未填寫類型/品種';
+
+                card.innerHTML =
+                    '<div class="pet-card-info">' +
+                        '<span class="pet-card-name">' + escapeHtml(pet.P_Name || '未命名') + '</span>' +
+                        '<span class="pet-card-sub">' + escapeHtml(subText) + '</span>' +
+                    '</div>' +
+                    '<span class="pet-card-arrow">&rsaquo;</span>';
+
+                container.appendChild(card);
+            });
+        }
+
+        async function loadPetList() {
+            document.getElementById('loading-overlay').classList.add('is-visible');
+            document.getElementById('petListView').style.display = 'none';
+            document.getElementById('petForm').style.display = 'none';
+
+            const uid = document.getElementById('U_ID').value;
+
+            // 逾時保護：後端(GAS 冷啟動 / Supabase 喚醒)偶爾會回應緩慢，避免使用者無限等待
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            try {
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getPetList&uid=${uid}`, { signal: controller.signal });
+                const result = await response.json();
+
+                if (result.success) {
+                    petListCache = Array.isArray(result.data) ? result.data : [];
+                } else {
+                    console.error('讀取毛小孩清單失敗:', result.error);
+                    alert('讀取毛小孩資料時發生問題：\n' + (result.error || '未知錯誤'));
+                    petListCache = [];
+                }
+            } catch (error) {
+                console.error("資料讀取失敗:", error);
+                const isTimeout = error.name === 'AbortError';
+                alert((isTimeout ? '讀取毛小孩清單逾時（伺服器回應過久），' : '讀取毛小孩清單時發生網路錯誤，') + '請確認網路狀況後重新整理再試一次。');
+                petListCache = [];
+            } finally {
+                clearTimeout(timeoutId);
+                renderPetList();
+                document.getElementById('loading-overlay').classList.remove('is-visible');
+                showListView();
+            }
+        }
+
+        window.onload = async function() {
+            document.getElementById('P_Name').addEventListener('input', validateRequiredFields);
+            document.getElementById('P_Name').addEventListener('change', validateRequiredFields);
+
+            const uid = getParamFromUrl('uid');
+
+            if (!uid) {
+                document.getElementById('loading-overlay').innerHTML = "<div class='loading-text is-error'>無法取得系統授權碼，請從 LINE 重新進入</div>";
+                document.getElementById('loading-overlay').classList.add('is-visible');
+                return;
+            }
+
+            document.getElementById('U_ID').value = uid;
+
+            await loadPetList();
+        };
+
+        async function submitForm() {
+            const uid = document.getElementById('U_ID').value;
+            const petId = document.getElementById('P_ID').value;
+            const name = document.getElementById('P_Name').value.trim();
+            const type = document.getElementById('P_Type').value;
+            const breeds = document.getElementById('P_Breeds').value;
+            const sex = document.getElementById('P_Sex').value;
+            const weightRaw = document.getElementById('P_Weight').value;
+            const weight = weightRaw !== '' ? parseFloat(weightRaw) : null;
+            const size = document.getElementById('P_Size').value;
+            const ic = document.getElementById('P_IC').value;
+            const memo = document.getElementById('P_Memo').value;
+            const birthday = document.getElementById('P_Birthday').value;
+
+            if (!uid || !name) {
+                alert("請確認「寵物名稱」已填寫！");
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.innerText = '資料儲存中...';
+            btn.disabled = true;
+
+            const requestData = {
+                action: 'insertPet',
+                payload: {
+                    uid: uid,
+                    petId: petId || undefined,
+                    name: name,
+                    type: type,
+                    breeds: breeds,
+                    sex: sex,
+                    weight: weight,
+                    size: size,
+                    ic: ic,
+                    memo: memo,
+                    birthday: birthday
+                }
+            };
+
+            try {
+                const response = await fetch(CONFIG.GAS_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('successModalMessage').innerText =
+                        (petId ? '毛小孩的資料已更新完成。' : '毛小孩的資料已新增完成。');
+                    document.getElementById('successModal').classList.add('is-visible');
+
+                    setTimeout(async function() {
+                        document.getElementById('successModal').classList.remove('is-visible');
+                        btn.innerText = '儲存資料';
+                        await loadPetList();
+                    }, 1200);
+                } else {
+                    alert('儲存失敗，請檢查資料庫設定：' + JSON.stringify(result.error));
+                    btn.innerText = '儲存資料';
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                console.error(error);
+                alert('網路連線錯誤，請稍後再試。');
+                btn.innerText = '儲存資料';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

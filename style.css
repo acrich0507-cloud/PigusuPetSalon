@@ -241,6 +241,63 @@ select.form-control {
     margin-left: 6px;
 }
 
+.pet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.pet-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--color-input-bg);
+    border: 1.5px solid var(--color-border-soft);
+    border-radius: var(--radius-control);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+.pet-card:active {
+    background: #f2f8f5;
+    border-color: var(--color-line);
+}
+.pet-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.pet-card-name {
+    font-weight: 700;
+    color: var(--color-heading);
+    font-size: 16px;
+}
+.pet-card-sub {
+    font-size: 13px;
+    color: var(--color-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pet-card-arrow {
+    color: var(--color-line);
+    font-size: 22px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+.pet-list-empty {
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 14px;
+    padding: 24px 0;
+}
+#petListView .btn,
+#petListView .btn-secondary {
+    margin-top: 10px;
+}
+
 .modal-overlay {
     display: none;
     position: fixed;
