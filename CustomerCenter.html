@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>毛孩美容會員中心</title>
+    <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
     <script src="config.js"></script>
     <link rel="stylesheet" href="style.css">
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
@@ -192,10 +195,30 @@
             return exists;
         }
 
+        function sleep(ms) {
+            return new Promise(function (resolve) { setTimeout(resolve, ms); });
+        }
+
+        // liff.init() 在 LINE App 剛冷啟動、橋接尚未就緒時偶爾會失敗，
+        // 加上短暫重試可大幅降低「需要手動重新整理」的情況
+        async function initLiffWithRetry(maxRetries) {
+            const retries = maxRetries || 2;
+            for (let attempt = 0; attempt <= retries; attempt++) {
+                try {
+                    await liff.init({ liffId: CONFIG.LIFF_ID });
+                    return;
+                } catch (err) {
+                    if (attempt === retries) throw err;
+                    console.warn(`liff.init 失敗，準備重試第 ${attempt + 1} 次`, err);
+                    await sleep(400 * (attempt + 1));
+                }
+            }
+        }
+
         async function initApp() {
             try {
                 setLoadingText('正在連接 LINE...');
-                await liff.init({ liffId: CONFIG.LIFF_ID });
+                await initLiffWithRetry();
 
                 if (!liff.isLoggedIn()) {
                     liff.login();
@@ -230,7 +253,8 @@
                 await checkUserExists(currentUid);
             } catch (err) {
                 console.error(err);
-                showError('LINE 系統載入失敗，請確認 LIFF ID 是否正確。');
+                const detail = (err && (err.code || err.message)) ? `${err.code || ''} ${err.message || err}`.trim() : String(err);
+                showError(`LINE 系統載入失敗。<br><small style="color:#999;">${detail}</small>`);
             }
         }
 
