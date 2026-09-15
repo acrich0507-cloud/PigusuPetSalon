@@ -371,8 +371,13 @@
         }
 
         function buildHealthPayload() {
+            const healthOtherIds = PET_HEALTH_CHECK_FIELDS.filter(function(id) { return id !== 'PH_None'; });
+            const hasAnyHealthOtherChecked = healthOtherIds.some(function(id) { return getCheckboxValue(id); });
+            const shouldCheckHealthNone = !hasAnyHealthOtherChecked;
+            setCheckboxValue('PH_None', shouldCheckHealthNone);
+
             return {
-                PH_None: getCheckboxValue('PH_None'),
+                PH_None: shouldCheckHealthNone ? true : getCheckboxValue('PH_None'),
                 PH_CKD: getCheckboxValue('PH_CKD'),
                 PH_RV: getCheckboxValue('PH_RV'),
                 PH_HI: getCheckboxValue('PH_HI'),
@@ -397,8 +402,13 @@
         }
 
         function buildWarinessPayload() {
+            const warinessOtherIds = PET_WARINESS_CHECK_FIELDS.filter(function(id) { return id !== 'PW_None'; });
+            const hasAnyWarinessOtherChecked = warinessOtherIds.some(function(id) { return getCheckboxValue(id); });
+            const shouldCheckWarinessNone = !hasAnyWarinessOtherChecked;
+            setCheckboxValue('PW_None', shouldCheckWarinessNone);
+
             return {
-                PW_None: getCheckboxValue('PW_None'),
+                PW_None: shouldCheckWarinessNone ? true : getCheckboxValue('PW_None'),
                 PW_ASB: getCheckboxValue('PW_ASB'),
                 PW_WN: getCheckboxValue('PW_WN'),
                 PW_Mani: getCheckboxValue('PW_Mani'),
