@@ -90,6 +90,50 @@
                 <textarea id="P_Memo" class="form-control" placeholder="有什麼想讓我們知道的嗎？（過敏、習慣...）"></textarea>
             </div>
 
+            <div class="form-group">
+                <label>寵物健康</label>
+                <div class="checkbox-container">
+                    <label class="checkbox-group"><input type="checkbox" id="PH_None"><span>無疾病</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_CKD"><span>慢性腎衰竭</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_RV"><span>心絲蟲</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_HI"><span>聽力受損</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_VI"><span>視力受損</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_EPI"><span>癲癇</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_CDV"><span>犬瘟熱</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_EHR"><span>艾莉希體</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_PIV"><span>氣管塌陷</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_CARDIO"><span>心臟病</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_ASTH"><span>氣喘（易喘）</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PH_HIP"><span>髖關節問題</span></label>
+                    <input type="text" id="PH_HIP_Memo" class="form-control" placeholder="髖關節問題說明（選填）">
+                    <label class="checkbox-group"><input type="checkbox" id="PH_PARA"><span>寄生蟲感染</span></label>
+                    <input type="text" id="PH_PARA_Memo" class="form-control" placeholder="寄生蟲感染說明（選填）">
+                    <label class="checkbox-group"><input type="checkbox" id="PH_OA"><span>骨骼（骨折）舊傷</span></label>
+                    <input type="text" id="PH_OA_Memo" class="form-control" placeholder="骨骼（骨折）舊傷說明（選填）">
+                    <label class="checkbox-group"><input type="checkbox" id="PH_AD"><span>皮膚疾病</span></label>
+                    <input type="text" id="PH_AD_Memo" class="form-control" placeholder="皮膚疾病說明（選填）">
+                    <label class="checkbox-group"><input type="checkbox" id="PH_Other"><span>其他</span></label>
+                    <input type="text" id="PH_Other_Memo" class="form-control" placeholder="其他健康狀況說明（選填）">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>寵物注意事項</label>
+                <div class="checkbox-container">
+                    <label class="checkbox-group"><input type="checkbox" id="PW_None"><span>無須注意事項</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_ASB"><span>攻擊性</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_WN"><span>不親狗</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_Mani"><span>易緊張</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_SAD"><span>分離焦慮</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_DDS"><span>掙扎</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_PD"><span>不親人</span></label>
+                    <label class="checkbox-group"><input type="checkbox" id="PW_BWA"><span>敏感部位</span></label>
+                    <input type="text" id="PW_BWA_Memo" class="form-control" placeholder="敏感部位說明（選填）">
+                    <label class="checkbox-group"><input type="checkbox" id="PW_Other"><span>其他</span></label>
+                    <input type="text" id="PW_Other_Memo" class="form-control" placeholder="其他注意事項說明（選填）">
+                </div>
+            </div>
+
             <button type="button" class="btn" id="submitBtn" onclick="submitForm()" disabled>儲存資料</button>
             <button type="button" class="btn btn-secondary" onclick="showListView()">返回清單</button>
         </form>
@@ -119,6 +163,11 @@
         // 體型代碼對應表（來自 Basic_Data：TB_Name='Pet', Cul_Name='P_Size', Flag=TRUE）
         // 體型不再由使用者選擇，改為依體重由系統自動換算
         let petSizeOptions = [];
+
+        const PET_HEALTH_CHECK_FIELDS = ['PH_None', 'PH_CKD', 'PH_RV', 'PH_HI', 'PH_VI', 'PH_EPI', 'PH_CDV', 'PH_EHR', 'PH_PIV', 'PH_CARDIO', 'PH_ASTH', 'PH_HIP', 'PH_PARA', 'PH_OA', 'PH_AD', 'PH_Other'];
+        const PET_HEALTH_MEMO_FIELDS = ['PH_HIP_Memo', 'PH_PARA_Memo', 'PH_OA_Memo', 'PH_AD_Memo', 'PH_Other_Memo'];
+        const PET_WARINESS_CHECK_FIELDS = ['PW_None', 'PW_ASB', 'PW_WN', 'PW_Mani', 'PW_SAD', 'PW_DDS', 'PW_PD', 'PW_BWA', 'PW_Other'];
+        const PET_WARINESS_MEMO_FIELDS = ['PW_BWA_Memo', 'PW_Other_Memo'];
 
         const CODE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 分鐘，降低重複查詢雲端代碼檔
 
@@ -153,6 +202,132 @@
             const isValid = !!name;
             document.getElementById('submitBtn').disabled = !isValid;
             return isValid;
+        }
+
+        function setCheckboxValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.checked = value === true;
+            }
+        }
+
+        function getCheckboxValue(id) {
+            const el = document.getElementById(id);
+            return !!(el && el.checked);
+        }
+
+        function setTextValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = value || '';
+            }
+        }
+
+        function getTextValue(id) {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        }
+
+        function setupExclusiveNoneRules() {
+            const healthNoneId = 'PH_None';
+            const healthOthers = PET_HEALTH_CHECK_FIELDS.filter(function(id) { return id !== healthNoneId; });
+            const warinessNoneId = 'PW_None';
+            const warinessOthers = PET_WARINESS_CHECK_FIELDS.filter(function(id) { return id !== warinessNoneId; });
+
+            const healthNone = document.getElementById(healthNoneId);
+            const warinessNone = document.getElementById(warinessNoneId);
+
+            healthNone.addEventListener('change', function() {
+                if (healthNone.checked) {
+                    healthOthers.forEach(function(id) { setCheckboxValue(id, false); });
+                    PET_HEALTH_MEMO_FIELDS.forEach(function(id) { setTextValue(id, ''); });
+                }
+            });
+
+            healthOthers.forEach(function(id) {
+                const el = document.getElementById(id);
+                el.addEventListener('change', function() {
+                    if (el.checked) {
+                        setCheckboxValue(healthNoneId, false);
+                    }
+                });
+            });
+
+            warinessNone.addEventListener('change', function() {
+                if (warinessNone.checked) {
+                    warinessOthers.forEach(function(id) { setCheckboxValue(id, false); });
+                    PET_WARINESS_MEMO_FIELDS.forEach(function(id) { setTextValue(id, ''); });
+                }
+            });
+
+            warinessOthers.forEach(function(id) {
+                const el = document.getElementById(id);
+                el.addEventListener('change', function() {
+                    if (el.checked) {
+                        setCheckboxValue(warinessNoneId, false);
+                    }
+                });
+            });
+        }
+
+        function fillHealthAndWariness(health, wariness) {
+            const healthData = health || {};
+            PET_HEALTH_CHECK_FIELDS.forEach(function(id) {
+                setCheckboxValue(id, healthData[id] === true);
+            });
+            PET_HEALTH_MEMO_FIELDS.forEach(function(id) {
+                setTextValue(id, healthData[id]);
+            });
+
+            const warinessData = wariness || {};
+            PET_WARINESS_CHECK_FIELDS.forEach(function(id) {
+                setCheckboxValue(id, warinessData[id] === true);
+            });
+            PET_WARINESS_MEMO_FIELDS.forEach(function(id) {
+                setTextValue(id, warinessData[id]);
+            });
+        }
+
+        function buildHealthPayload() {
+            return {
+                PH_None: getCheckboxValue('PH_None'),
+                PH_CKD: getCheckboxValue('PH_CKD'),
+                PH_RV: getCheckboxValue('PH_RV'),
+                PH_HI: getCheckboxValue('PH_HI'),
+                PH_VI: getCheckboxValue('PH_VI'),
+                PH_EPI: getCheckboxValue('PH_EPI'),
+                PH_CDV: getCheckboxValue('PH_CDV'),
+                PH_EHR: getCheckboxValue('PH_EHR'),
+                PH_PIV: getCheckboxValue('PH_PIV'),
+                PH_CARDIO: getCheckboxValue('PH_CARDIO'),
+                PH_ASTH: getCheckboxValue('PH_ASTH'),
+                PH_HIP: getCheckboxValue('PH_HIP'),
+                PH_HIP_Memo: getTextValue('PH_HIP_Memo'),
+                PH_PARA: getCheckboxValue('PH_PARA'),
+                PH_PARA_Memo: getTextValue('PH_PARA_Memo'),
+                PH_OA: getCheckboxValue('PH_OA'),
+                PH_OA_Memo: getTextValue('PH_OA_Memo'),
+                PH_AD: getCheckboxValue('PH_AD'),
+                PH_AD_Memo: getTextValue('PH_AD_Memo'),
+                PH_Other: getCheckboxValue('PH_Other'),
+                PH_Other_Memo: getTextValue('PH_Other_Memo')
+            };
+        }
+
+        function buildWarinessPayload() {
+            return {
+                PW_None: getCheckboxValue('PW_None'),
+                PW_ASB: getCheckboxValue('PW_ASB'),
+                PW_WN: getCheckboxValue('PW_WN'),
+                PW_Mani: getCheckboxValue('PW_Mani'),
+                PW_SAD: getCheckboxValue('PW_SAD'),
+                PW_DDS: getCheckboxValue('PW_DDS'),
+                PW_PD: getCheckboxValue('PW_PD'),
+                PW_BWA: getCheckboxValue('PW_BWA'),
+                PW_BWA_Memo: getTextValue('PW_BWA_Memo'),
+                PW_Other: getCheckboxValue('PW_Other'),
+                PW_Other_Memo: getTextValue('PW_Other_Memo')
+            };
         }
 
         // 將任意文字安全地轉為可放進 innerHTML 的內容，避免寵物名稱/備註等使用者輸入造成 XSS
@@ -397,6 +572,7 @@
             document.getElementById('P_Weight').value = '';
             document.getElementById('P_IC').value = '';
             document.getElementById('P_Memo').value = '';
+            fillHealthAndWariness(null, null);
             recalcPetSize();
         }
 
@@ -420,6 +596,7 @@
             document.getElementById('P_IC').value = pet.P_IC || '';
             document.getElementById('P_Memo').value = pet.P_Memo || '';
             document.getElementById('P_Birthday').value = pet.P_Birthday ? pet.P_Birthday.substring(0, 10) : '';
+            fillHealthAndWariness(pet.Pet_Health, pet.Pet_Wariness);
             recalcPetSize();
 
             populateBreedSelect(pet.P_Type, pet.P_Breeds).then(function() {
@@ -497,6 +674,7 @@
             document.getElementById('P_Name').addEventListener('change', validateRequiredFields);
             document.getElementById('P_Weight').addEventListener('input', recalcPetSize);
             document.getElementById('P_Weight').addEventListener('change', recalcPetSize);
+            setupExclusiveNoneRules();
 
             const uid = getParamFromUrl('uid');
 
@@ -531,6 +709,8 @@
             const ic = document.getElementById('P_IC').value;
             const memo = document.getElementById('P_Memo').value;
             const birthday = document.getElementById('P_Birthday').value;
+            const health = buildHealthPayload();
+            const wariness = buildWarinessPayload();
 
             if (!uid || !name) {
                 alert("請確認「寵物名稱」已填寫！");
@@ -554,7 +734,9 @@
                     size: size,
                     ic: ic,
                     memo: memo,
-                    birthday: birthday
+                    birthday: birthday,
+                    health: health,
+                    wariness: wariness
                 }
             };
 
