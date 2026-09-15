@@ -113,7 +113,8 @@
         function renderMemberCard(uid, name) {
             document.getElementById('loading-overlay').classList.remove('is-visible');
             document.getElementById('content').classList.add('is-visible');
-            document.getElementById('name-display').innerText = `${name} 您好！`;
+            const greeting = (name && String(name).trim()) ? `${name} 您好！` : '您好！';
+            document.getElementById('name-display').innerText = greeting;
             document.getElementById('uid-display').innerText = `UID: ${uid}`;
 
             // QR 與畫面分開：先讓使用者看到會員卡，再補 QR
@@ -154,14 +155,8 @@
 
             const context = typeof liff.getContext === 'function' ? liff.getContext() : null;
             if (context && context.userId) {
-                let name = currentName || '';
-                try {
-                    const profile = await liff.getProfile();
-                    name = profile.displayName || name;
-                } catch (err) {
-                    // 有 uid 就先繼續，名稱可稍後再補
-                }
-                return { uid: context.userId, name: name };
+                // 有 uid 就先往下走，名稱延後背景補抓，減少首屏等待
+                return { uid: context.userId, name: currentName || '' };
             }
 
             const profile = await liff.getProfile();
@@ -169,6 +164,28 @@
                 uid: profile.userId,
                 name: profile.displayName || ''
             };
+        }
+
+        // 非阻塞補抓名稱：不影響主流程，抓到後再更新畫面與後續導頁參數
+        async function hydrateLineDisplayNameInBackground() {
+            if (currentName) {
+                return;
+            }
+            try {
+                const profile = await liff.getProfile();
+                const displayName = profile && profile.displayName ? profile.displayName : '';
+                if (!displayName) {
+                    return;
+                }
+                currentName = displayName;
+                const nameEl = document.getElementById('name-display');
+                if (nameEl && document.getElementById('content').classList.contains('is-visible')) {
+                    nameEl.innerText = `${currentName} 您好！`;
+                }
+            } catch (err) {
+                // 背景補抓失敗不影響主流程
+                console.warn('背景補抓 LINE 名稱失敗', err);
+            }
         }
 
         // 逾時保護：後端(GAS 冷啟動 / Supabase 喚醒)偶爾會回應緩慢，避免請求無限期卡住
@@ -248,6 +265,9 @@
                 const identity = await resolveLineIdentity();
                 currentUid = identity.uid;
                 currentName = identity.name || '';
+
+                // 不阻塞首屏：名稱若尚未取得，改為背景補抓
+                hydrateLineDisplayNameInBackground();
 
                 if (!currentUid) {
                     showError('無法取得 LINE 身分，請重新進入。');
