@@ -105,15 +105,15 @@
                     <label class="checkbox-group"><input type="checkbox" id="PH_CARDIO"><span>心臟病</span></label>
                     <label class="checkbox-group"><input type="checkbox" id="PH_ASTH"><span>氣喘（易喘）</span></label>
                     <label class="checkbox-group"><input type="checkbox" id="PH_HIP"><span>髖關節問題</span></label>
-                    <input type="text" id="PH_HIP_Memo" class="form-control" placeholder="髖關節問題說明（選填）">
+                    <input type="text" id="PH_HIP_Memo" class="form-control" placeholder="請輸入受傷位置" disabled>
                     <label class="checkbox-group"><input type="checkbox" id="PH_PARA"><span>寄生蟲感染</span></label>
-                    <input type="text" id="PH_PARA_Memo" class="form-control" placeholder="寄生蟲感染說明（選填）">
+                    <input type="text" id="PH_PARA_Memo" class="form-control" placeholder="請輸入寄生蟲名稱" disabled>
                     <label class="checkbox-group"><input type="checkbox" id="PH_OA"><span>骨骼（骨折）舊傷</span></label>
-                    <input type="text" id="PH_OA_Memo" class="form-control" placeholder="骨骼（骨折）舊傷說明（選填）">
+                    <input type="text" id="PH_OA_Memo" class="form-control" placeholder="請輸入受傷位置" disabled>
                     <label class="checkbox-group"><input type="checkbox" id="PH_AD"><span>皮膚疾病</span></label>
-                    <input type="text" id="PH_AD_Memo" class="form-control" placeholder="皮膚疾病說明（選填）">
+                    <input type="text" id="PH_AD_Memo" class="form-control" placeholder="請輸入疾病名稱或部位" disabled>
                     <label class="checkbox-group"><input type="checkbox" id="PH_Other"><span>其他</span></label>
-                    <input type="text" id="PH_Other_Memo" class="form-control" placeholder="其他健康狀況說明（選填）">
+                    <input type="text" id="PH_Other_Memo" class="form-control" placeholder="請輸入其他健康狀況說明" disabled>
                 </div>
             </div>
 
@@ -128,9 +128,9 @@
                     <label class="checkbox-group"><input type="checkbox" id="PW_DDS"><span>掙扎</span></label>
                     <label class="checkbox-group"><input type="checkbox" id="PW_PD"><span>不親人</span></label>
                     <label class="checkbox-group"><input type="checkbox" id="PW_BWA"><span>敏感部位</span></label>
-                    <input type="text" id="PW_BWA_Memo" class="form-control" placeholder="敏感部位說明（選填）">
+                    <input type="text" id="PW_BWA_Memo" class="form-control" placeholder="請輸入敏感部位" disabled>
                     <label class="checkbox-group"><input type="checkbox" id="PW_Other"><span>其他</span></label>
-                    <input type="text" id="PW_Other_Memo" class="form-control" placeholder="其他注意事項說明（選填）">
+                    <input type="text" id="PW_Other_Memo" class="form-control" placeholder="請輸入其他注意事項說明" disabled>
                 </div>
             </div>
 
@@ -168,6 +168,17 @@
         const PET_HEALTH_MEMO_FIELDS = ['PH_HIP_Memo', 'PH_PARA_Memo', 'PH_OA_Memo', 'PH_AD_Memo', 'PH_Other_Memo'];
         const PET_WARINESS_CHECK_FIELDS = ['PW_None', 'PW_ASB', 'PW_WN', 'PW_Mani', 'PW_SAD', 'PW_DDS', 'PW_PD', 'PW_BWA', 'PW_Other'];
         const PET_WARINESS_MEMO_FIELDS = ['PW_BWA_Memo', 'PW_Other_Memo'];
+        const PET_HEALTH_MEMO_DEPENDENCIES = {
+            PH_HIP_Memo: 'PH_HIP',
+            PH_PARA_Memo: 'PH_PARA',
+            PH_OA_Memo: 'PH_OA',
+            PH_AD_Memo: 'PH_AD',
+            PH_Other_Memo: 'PH_Other'
+        };
+        const PET_WARINESS_MEMO_DEPENDENCIES = {
+            PW_BWA_Memo: 'PW_BWA',
+            PW_Other_Memo: 'PW_Other'
+        };
 
         const CODE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 分鐘，降低重複查詢雲端代碼檔
 
@@ -228,6 +239,28 @@
             return el ? el.value.trim() : '';
         }
 
+        function setMemoEnabled(memoId, enabled) {
+            const memoEl = document.getElementById(memoId);
+            if (!memoEl) {
+                return;
+            }
+            memoEl.disabled = !enabled;
+            if (!enabled) {
+                memoEl.value = '';
+            }
+        }
+
+        function syncConditionalMemoInputs() {
+            Object.keys(PET_HEALTH_MEMO_DEPENDENCIES).forEach(function(memoId) {
+                const checkId = PET_HEALTH_MEMO_DEPENDENCIES[memoId];
+                setMemoEnabled(memoId, getCheckboxValue(checkId));
+            });
+            Object.keys(PET_WARINESS_MEMO_DEPENDENCIES).forEach(function(memoId) {
+                const checkId = PET_WARINESS_MEMO_DEPENDENCIES[memoId];
+                setMemoEnabled(memoId, getCheckboxValue(checkId));
+            });
+        }
+
         function setupExclusiveNoneRules() {
             const healthNoneId = 'PH_None';
             const healthOthers = PET_HEALTH_CHECK_FIELDS.filter(function(id) { return id !== healthNoneId; });
@@ -240,8 +273,8 @@
             healthNone.addEventListener('change', function() {
                 if (healthNone.checked) {
                     healthOthers.forEach(function(id) { setCheckboxValue(id, false); });
-                    PET_HEALTH_MEMO_FIELDS.forEach(function(id) { setTextValue(id, ''); });
                 }
+                syncConditionalMemoInputs();
             });
 
             healthOthers.forEach(function(id) {
@@ -250,14 +283,24 @@
                     if (el.checked) {
                         setCheckboxValue(healthNoneId, false);
                     }
+                    syncConditionalMemoInputs();
+                });
+            });
+
+            PET_HEALTH_MEMO_FIELDS.forEach(function(memoId) {
+                const el = document.getElementById(memoId);
+                el.addEventListener('input', function() {
+                    if (el.value.trim() !== '') {
+                        setCheckboxValue(healthNoneId, false);
+                    }
                 });
             });
 
             warinessNone.addEventListener('change', function() {
                 if (warinessNone.checked) {
                     warinessOthers.forEach(function(id) { setCheckboxValue(id, false); });
-                    PET_WARINESS_MEMO_FIELDS.forEach(function(id) { setTextValue(id, ''); });
                 }
+                syncConditionalMemoInputs();
             });
 
             warinessOthers.forEach(function(id) {
@@ -266,8 +309,20 @@
                     if (el.checked) {
                         setCheckboxValue(warinessNoneId, false);
                     }
+                    syncConditionalMemoInputs();
                 });
             });
+
+            PET_WARINESS_MEMO_FIELDS.forEach(function(memoId) {
+                const el = document.getElementById(memoId);
+                el.addEventListener('input', function() {
+                    if (el.value.trim() !== '') {
+                        setCheckboxValue(warinessNoneId, false);
+                    }
+                });
+            });
+
+            syncConditionalMemoInputs();
         }
 
         function fillHealthAndWariness(health, wariness) {
@@ -286,6 +341,8 @@
             PET_WARINESS_MEMO_FIELDS.forEach(function(id) {
                 setTextValue(id, warinessData[id]);
             });
+
+            syncConditionalMemoInputs();
         }
 
         function buildHealthPayload() {
@@ -302,15 +359,15 @@
                 PH_CARDIO: getCheckboxValue('PH_CARDIO'),
                 PH_ASTH: getCheckboxValue('PH_ASTH'),
                 PH_HIP: getCheckboxValue('PH_HIP'),
-                PH_HIP_Memo: getTextValue('PH_HIP_Memo'),
+                PH_HIP_Memo: getCheckboxValue('PH_HIP') ? getTextValue('PH_HIP_Memo') : '',
                 PH_PARA: getCheckboxValue('PH_PARA'),
-                PH_PARA_Memo: getTextValue('PH_PARA_Memo'),
+                PH_PARA_Memo: getCheckboxValue('PH_PARA') ? getTextValue('PH_PARA_Memo') : '',
                 PH_OA: getCheckboxValue('PH_OA'),
-                PH_OA_Memo: getTextValue('PH_OA_Memo'),
+                PH_OA_Memo: getCheckboxValue('PH_OA') ? getTextValue('PH_OA_Memo') : '',
                 PH_AD: getCheckboxValue('PH_AD'),
-                PH_AD_Memo: getTextValue('PH_AD_Memo'),
+                PH_AD_Memo: getCheckboxValue('PH_AD') ? getTextValue('PH_AD_Memo') : '',
                 PH_Other: getCheckboxValue('PH_Other'),
-                PH_Other_Memo: getTextValue('PH_Other_Memo')
+                PH_Other_Memo: getCheckboxValue('PH_Other') ? getTextValue('PH_Other_Memo') : ''
             };
         }
 
@@ -324,9 +381,9 @@
                 PW_DDS: getCheckboxValue('PW_DDS'),
                 PW_PD: getCheckboxValue('PW_PD'),
                 PW_BWA: getCheckboxValue('PW_BWA'),
-                PW_BWA_Memo: getTextValue('PW_BWA_Memo'),
+                PW_BWA_Memo: getCheckboxValue('PW_BWA') ? getTextValue('PW_BWA_Memo') : '',
                 PW_Other: getCheckboxValue('PW_Other'),
-                PW_Other_Memo: getTextValue('PW_Other_Memo')
+                PW_Other_Memo: getCheckboxValue('PW_Other') ? getTextValue('PW_Other_Memo') : ''
             };
         }
 
