@@ -120,6 +120,29 @@
         // 體型不再由使用者選擇，改為依體重由系統自動換算
         let petSizeOptions = [];
 
+        const CODE_CACHE_TTL_MS = 30 * 60 * 1000; // 30 分鐘，降低重複查詢雲端代碼檔
+
+        function readCodeCache(key) {
+            try {
+                const raw = sessionStorage.getItem(key);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !Array.isArray(parsed.data) || !parsed.at) return null;
+                if (Date.now() - parsed.at > CODE_CACHE_TTL_MS) return null;
+                return parsed.data;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function writeCodeCache(key, data) {
+            try {
+                sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data }));
+            } catch (err) {
+                // sessionStorage 不可用時略過快取
+            }
+        }
+
         function getParamFromUrl(paramName) {
             const params = new URLSearchParams(window.location.search);
             return params.get(paramName);
@@ -164,12 +187,20 @@
 
         // 讀取「寵物類型」代碼對應檔 (Basic_Data: TB_Name='Pet', Cul_Name='P_Type')
         async function loadPetTypeOptions() {
+            const cached = readCodeCache('pps_pet_type_options');
+            if (cached) {
+                petTypeOptions = cached;
+                populatePetTypeSelect();
+                return;
+            }
+
             try {
                 const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Type`);
                 const result = await response.json();
 
                 if (result.success) {
                     petTypeOptions = Array.isArray(result.data) ? result.data : [];
+                    writeCodeCache('pps_pet_type_options', petTypeOptions);
                 } else {
                     console.error('讀取寵物類型代碼失敗:', result.error);
                     petTypeOptions = [];
@@ -183,24 +214,52 @@
         }
 
         // 依「寵物類型」代碼，讀取（並快取）該類型底下的品種代碼對應表 (Basic_Data: TB_Name='Pet', Cul_Name='P_Breeds', code第一碼=類型代碼)
-        async function ensureBreedDescLoaded(typeCode) {
-            if (!typeCode || breedDescCacheByType[typeCode]) {
+        async function loadAllBreedOptions() {
+            const cached = readCodeCache('pps_pet_breeds_all');
+            if (cached) {
+                breedDescCacheByType = {};
+                cached.forEach(function(opt) {
+                    if (!opt || !opt.Code) {
+                        return;
+                    }
+                    const typeCode = String(opt.Code).substring(0, 1);
+                    if (!typeCode) {
+                        return;
+                    }
+                    if (!breedDescCacheByType[typeCode]) {
+                        breedDescCacheByType[typeCode] = {};
+                    }
+                    breedDescCacheByType[typeCode][opt.Code] = opt.Code_Desc || opt.Code;
+                });
                 return;
             }
+
             try {
-                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Breeds&codePrefix=${encodeURIComponent(typeCode)}`);
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Breeds`);
                 const result = await response.json();
 
-                const map = {};
+                breedDescCacheByType = {};
                 if (result.success && Array.isArray(result.data)) {
-                    result.data.forEach(function(opt) { map[opt.Code] = opt.Code_Desc || opt.Code; });
+                    result.data.forEach(function(opt) {
+                        if (!opt || !opt.Code) {
+                            return;
+                        }
+                        const typeCode = String(opt.Code).substring(0, 1);
+                        if (!typeCode) {
+                            return;
+                        }
+                        if (!breedDescCacheByType[typeCode]) {
+                            breedDescCacheByType[typeCode] = {};
+                        }
+                        breedDescCacheByType[typeCode][opt.Code] = opt.Code_Desc || opt.Code;
+                    });
+                    writeCodeCache('pps_pet_breeds_all', result.data);
                 } else {
                     console.error('讀取寵物品種代碼失敗:', result.error);
                 }
-                breedDescCacheByType[typeCode] = map;
             } catch (error) {
                 console.error('讀取寵物品種代碼時發生網路錯誤:', error);
-                breedDescCacheByType[typeCode] = {};
+                breedDescCacheByType = {};
             }
         }
 
@@ -223,7 +282,6 @@
             }
 
             select.innerHTML = '<option value="">請選擇</option>';
-            await ensureBreedDescLoaded(typeCode);
 
             const map = breedDescCacheByType[typeCode] || {};
             Object.keys(map).sort().forEach(function(code) {
@@ -244,8 +302,8 @@
 
         // 預先載入清單中所有毛小孩「所屬類型」的品種對應表，讓清單卡片能正確顯示品種名稱
         async function preloadBreedDescForList() {
-            const typeCodes = Array.from(new Set(petListCache.map(function(p) { return p.P_Type; }).filter(Boolean)));
-            await Promise.all(typeCodes.map(function(code) { return ensureBreedDescLoaded(code); }));
+            // 品種代碼已在進頁面時一次載入完成，這裡保留函式以維持呼叫相容性
+            return;
         }
 
         // 依體重換算體型代碼：<=4kg→1，4~10kg→2，10~25kg→3，>=25kg→4
@@ -276,12 +334,20 @@
 
         // 讀取「體型」代碼對應檔 (Basic_Data: TB_Name='Pet', Cul_Name='P_Size', Flag=TRUE)
         async function loadPetSizeOptions() {
+            const cached = readCodeCache('pps_pet_size_options');
+            if (cached) {
+                petSizeOptions = cached;
+                recalcPetSize();
+                return;
+            }
+
             try {
                 const response = await fetch(`${CONFIG.GAS_API_URL}?action=getCodeList&tbName=Pet&culName=P_Size&onlyEnabled=true`);
                 const result = await response.json();
 
                 if (result.success) {
                     petSizeOptions = Array.isArray(result.data) ? result.data : [];
+                    writeCodeCache('pps_pet_size_options', petSizeOptions);
                     if (petSizeOptions.length === 0) {
                         // 查無代碼資料，體型欄位會退回顯示原始代碼數字；請確認 Basic_Data 是否已建立對應資料且 Flag=TRUE
                         console.warn('Basic_Data 查無 TB_Name=Pet, Cul_Name=P_Size, Flag=TRUE 的資料，體型將只顯示代碼數字。');
@@ -401,7 +467,7 @@
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
             try {
-                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getPetList&uid=${uid}`, { signal: controller.signal });
+                const response = await fetch(`${CONFIG.GAS_API_URL}?action=getPetList&uid=${encodeURIComponent(uid)}`, { signal: controller.signal });
                 const result = await response.json();
 
                 if (result.success) {
@@ -445,7 +511,7 @@
             // 代碼對應表（類型/體型）跟寵物清單彼此沒有相依性，一開始就同時送出請求，
             // 不用等代碼表載入完才開始查清單，減少等待時間（尤其 GAS 冷啟動時更明顯）
             const petListPromise = loadPetList();
-            await Promise.all([loadPetTypeOptions(), loadPetSizeOptions(), petListPromise]);
+            await Promise.all([loadPetTypeOptions(), loadAllBreedOptions(), loadPetSizeOptions(), petListPromise]);
 
             // 代碼表有可能比清單晚回來，此時清單卡片裡的類型/品種文字還沒對應好，
             // 全部載入完成後再重新渲染一次，確保顯示正確
