@@ -171,10 +171,22 @@
             };
         }
 
+        // 逾時保護：後端(GAS 冷啟動 / Supabase 喚醒)偶爾會回應緩慢，避免請求無限期卡住
+        async function fetchWithTimeout(url, timeoutMs) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
+            try {
+                return await fetch(url, { signal: controller.signal });
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
         async function checkUserExists(uid, options) {
             const opts = options || {};
-            const response = await fetch(
-                `${CONFIG.GAS_API_URL}?action=checkUser&uid=${encodeURIComponent(uid)}`
+            const response = await fetchWithTimeout(
+                `${CONFIG.GAS_API_URL}?action=checkUser&uid=${encodeURIComponent(uid)}`,
+                15000
             );
             const result = await response.json();
 
@@ -257,7 +269,14 @@
                 }
 
                 setLoadingText('正在確認會員資料...');
-                await checkUserExists(currentUid);
+                try {
+                    await checkUserExists(currentUid);
+                } catch (err) {
+                    // 第一次失敗常見於 GAS 冷啟動 / 短暫網路不穩，自動重試一次再放棄
+                    console.warn('確認會員資料失敗，準備重試一次', err);
+                    setLoadingText('連線較慢，重試中...');
+                    await checkUserExists(currentUid);
+                }
             } catch (err) {
                 console.error(err);
                 const detail = (err && (err.code || err.message)) ? `${err.code || ''} ${err.message || err}`.trim() : String(err);
