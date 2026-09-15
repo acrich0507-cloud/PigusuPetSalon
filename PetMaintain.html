@@ -345,6 +345,31 @@
             syncConditionalMemoInputs();
         }
 
+        async function ensurePetDetailLoaded(pet) {
+            if (!pet || !pet.P_ID || pet._detailLoaded) {
+                return;
+            }
+
+            const uid = document.getElementById('U_ID').value;
+            if (!uid) {
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `${CONFIG.GAS_API_URL}?action=getPetDetail&uid=${encodeURIComponent(uid)}&petId=${encodeURIComponent(pet.P_ID)}`
+                );
+                const result = await response.json();
+                if (result.success && result.data) {
+                    pet.Pet_Health = result.data.Pet_Health || null;
+                    pet.Pet_Wariness = result.data.Pet_Wariness || null;
+                    pet._detailLoaded = true;
+                }
+            } catch (error) {
+                console.warn('讀取單筆寵物明細失敗，將使用預設值顯示', error);
+            }
+        }
+
         function buildHealthPayload() {
             return {
                 PH_None: getCheckboxValue('PH_None'),
@@ -639,11 +664,15 @@
             showFormView();
         }
 
-        function editPet(petId) {
+        async function editPet(petId) {
             const pet = petListCache.find(function(p) { return p.P_ID === petId; });
             if (!pet) {
                 return;
             }
+
+            document.getElementById('loading-overlay').classList.add('is-visible');
+            await ensurePetDetailLoaded(pet);
+            document.getElementById('loading-overlay').classList.remove('is-visible');
 
             document.getElementById('P_ID').value = pet.P_ID || '';
             document.getElementById('P_Name').value = pet.P_Name || '';
