@@ -442,8 +442,14 @@
 
             document.getElementById('U_ID').value = uid;
 
-            await Promise.all([loadPetTypeOptions(), loadPetSizeOptions()]);
-            await loadPetList();
+            // 代碼對應表（類型/體型）跟寵物清單彼此沒有相依性，一開始就同時送出請求，
+            // 不用等代碼表載入完才開始查清單，減少等待時間（尤其 GAS 冷啟動時更明顯）
+            const petListPromise = loadPetList();
+            await Promise.all([loadPetTypeOptions(), loadPetSizeOptions(), petListPromise]);
+
+            // 代碼表有可能比清單晚回來，此時清單卡片裡的類型/品種文字還沒對應好，
+            // 全部載入完成後再重新渲染一次，確保顯示正確
+            renderPetList();
         };
 
         async function submitForm() {
